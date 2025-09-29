@@ -79,50 +79,52 @@ def extract_full_speech(text, speech_no, province, speaker):
 if __name__ == "__main__":
     es = Elasticsearch(hosts=["http://localhost:9200"])
     index_name = "parliament_speeches"
-    term = 28
-    year = 1
+    
+    actions = []
 
-    actions = []  # collect all docs for bulk insert
+    terms_and_years = {28 : [1], 27: [1, 2, 3, 4, 5, 6], 26: [1, 2, 3], 25: [1, 2]}
 
-    # Loop through all txt files in the folder
-    for filepath in glob.glob("TPT/TXTs/d28-y1_txts/*.txt"):
-        filename = os.path.basename(filepath)
-        session_id = extract_session_id(filename)
-        print(f"\n📂 Processing {filename}")
+    for term, years in terms_and_years.items():
+        for year in years:
+            folder_path = f"TXTs/d{term}-y{year}_txts/"
+            for filepath in glob.glob(os.path.join(folder_path, "*.txt")):
+                if filepath.endswith(("fih.txt", "gnd.txt")):
+                    continue
 
-        with open(filepath, "r", encoding="utf-8") as f:
-            raw_text = f.read()
+                filename = os.path.basename(filepath)
+                session_id = extract_session_id(filename)
+                print(f"\n📂 Processing {filename}")
 
-        # Step 1: extract summaries
-        aciklamalar = extract_aciklamalar(raw_text)
-        summaries = extract_speech_summaries(aciklamalar)
-        print(f"Found {len(summaries)} speech summaries.")
+                with open(filepath, "r", encoding="utf-8") as f:
+                    raw_text = f.read()
 
-        # Step 2: attach full speech content
-        for s in summaries:
-            speech_text = extract_full_speech(raw_text, s["speech_no"], s["province"], s["speech_giver"])
-            s["content_preview"] = speech_text[:100] + "..." if speech_text else None
-            s["content_length"] = len(speech_text) if speech_text else 0
+                aciklamalar = extract_aciklamalar(raw_text)
+                summaries = extract_speech_summaries(aciklamalar)
+                print(f"Found {len(summaries)} speech summaries.")
 
-            doc = {
-                "_index": index_name,
-                "_id": f"{session_id}-{s['speech_no']}",  # unique ID includes speech no 
-                "_source": {
-                    "session_id": session_id,
-                    "term": term,
-                    "year": year,
-                    "file": filename,
-                    "speech_no": int(s["speech_no"]),
-                    "province": s["province"],
-                    "speech_giver": s["speech_giver"],
-                    "speech_title": s["speech_title"],
-                    "page_ref": s["page_ref"],
-                    "content": speech_text if speech_text else ""
-                }
-            }
-            actions.append(doc)
+                for s in summaries:
+                    speech_text = extract_full_speech(raw_text, s["speech_no"], s["province"], s["speech_giver"])
+                    s["content_preview"] = speech_text[:100] + "..." if speech_text else None
+                    s["content_length"] = len(speech_text) if speech_text else 0
 
-    # Bulk insert to Elasticsearch
+                    doc = {
+                        "_index": index_name,
+                        "_id": f"{session_id}-{s['speech_no']}",
+                        "_source": {
+                            "session_id": session_id,
+                            "term": term,
+                            "year": year,
+                            "file": filename,
+                            "speech_no": int(s["speech_no"]),
+                            "province": s["province"],
+                            "speech_giver": s["speech_giver"],
+                            "speech_title": s["speech_title"],
+                            "page_ref": s["page_ref"],
+                            "content": speech_text if speech_text else ""
+                        }
+                    }
+                    actions.append(doc)
+
     if actions:
         success, failed = helpers.bulk(es, actions, stats_only=True)
         print(f"\n✅ Indexed {success} documents, ❌ failed {failed}")
