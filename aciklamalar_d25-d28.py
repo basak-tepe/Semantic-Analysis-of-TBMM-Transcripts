@@ -82,7 +82,7 @@ if __name__ == "__main__":
     
     actions = []
 
-    terms_and_years = {28 : [1], 27: [1, 2, 3, 4, 5, 6], 26: [1, 2, 3], 25: [1, 2]}
+    terms_and_years = {28 : [1], 27: [1, 2, 3, 4, 5, 6], 26: [1, 2, 3], 25: [1, 2], 24: [1, 2, 3]}
 
     for term, years in terms_and_years.items():
         for year in years:
