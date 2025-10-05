@@ -1,0 +1,3 @@
+irem;30.09.2025; [24,28] dönemleri için toplam açıklama sayısı 26443 olarak es'ye atıldı.
+irem;05.10.2025;23 ve 28. dönem arası açıklamalar alındı toplam 27166 kayıt eklendi.;INFO
+irem;05.10.2025;Bazı açıklama içerik metinleri string tipinde değil, speeches_clean.csv file'da, Num of Invalid rows:843 ;TODO
