@@ -4,19 +4,22 @@ from elasticsearch import helpers
 import glob 
 import os
 
-def extract_session_id(filename):
+def extract_session_id(filename,term,year):
     """
     Extract session ID from the last two digits in the filename.
     EVERY SPEECH SHOULD HAVE A UNIQUE ID BASED ON SESSION_ID + SPEECH NO. 
     SPEECH NO IS PROVIDED LATER IN THE INDEX ID FIELD.
     Ex:
       tbmm28002002.txt -> 'd28-y1-s2' #this is just session id, not unique for each speech
+      tbmm19017005.txt -> 'd19-y1-s5'
+
+
     """
-    match = re.search(r"(\d{2})\.txt$", filename)
+    match = re.search(r"(\d{3})\.txt$", filename) # captures last three digits before .txt
     if not match:
         return None
     session_num = int(match.group(1))  # drops leading zero
-    return f"d28-y1-s{session_num}"
+    return f"term{term}-year{year}-session{session_num}"
 
 def extract_aciklamalar(text):
     """
@@ -82,7 +85,7 @@ if __name__ == "__main__":
     
     actions = []
 
-    terms_and_years = {28 : [1], 27: [1, 2, 3, 4, 5, 6], 26: [1, 2, 3], 25: [1, 2], 24: [1, 2, 3]}
+    terms_and_years = {28 : [1], 27: [1, 2, 3, 4, 5, 6], 26: [1, 2, 3], 25: [1, 2], 24: [1, 2, 3], 23:[1,2,3,4,5]}
 
     for term, years in terms_and_years.items():
         for year in years:
@@ -92,7 +95,7 @@ if __name__ == "__main__":
                     continue
 
                 filename = os.path.basename(filepath)
-                session_id = extract_session_id(filename)
+                session_id = extract_session_id(filename,term,year)
                 print(f"\n📂 Processing {filename}")
 
                 with open(filepath, "r", encoding="utf-8") as f:
