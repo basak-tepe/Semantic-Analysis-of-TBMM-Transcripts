@@ -3,7 +3,7 @@ import numpy as np
 import plotly.graph_objects as go
 
 # === CONFIG ===
-CSV_FILE = "topic_summary.csv"   # 👈 change to your actual file path
+CSV_FILE = "../data/topic_summary.csv"   # 👈 Updated path for new structure
 
 # === LOAD DATA ===
 df = pd.read_csv(CSV_FILE)

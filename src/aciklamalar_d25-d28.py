@@ -89,7 +89,8 @@ if __name__ == "__main__":
 
     for term, years in terms_and_years.items():
         for year in years:
-            folder_path = f"TXTs/d{term}-y{year}_txts/"
+            # Adjust this to your local path
+            folder_path = f"/Volumes/PortableSSD/TPT/TXTs/d{term}-y{year}_txts/"
             for filepath in glob.glob(os.path.join(folder_path, "*.txt")):
                 if filepath.endswith(("fih.txt", "gnd.txt")):
                     continue

@@ -3,9 +3,9 @@ import pandas as pd
 from bertopic import BERTopic
 import plotly.express as px
 
-INPUT_FILE = "speeches_clean.csv"
-MODEL_SAVE_PATH = "bertopic_model"
-TOPIC_SUMMARY_FILE = "topic_summary.csv"
+INPUT_FILE = "../data/speeches_clean.csv"
+MODEL_SAVE_PATH = "../bertopic_model"
+TOPIC_SUMMARY_FILE = "../data/topic_summary.csv"
 
 def run_topic_modeling(df: pd.DataFrame):
     print("⚙️  Training BERTopic model (this may take a while)...")
