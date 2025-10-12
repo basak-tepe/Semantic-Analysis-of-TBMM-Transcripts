@@ -1,7 +1,9 @@
 TXTs
 .env
+venv
 myenv
 scrape_all_sessions.py
 bertopic_model
 topic_summary.csv
-speeches_clean.csv
+speeches_clean.csvvenv/
+data/
