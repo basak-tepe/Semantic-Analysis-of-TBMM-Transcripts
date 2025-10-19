@@ -5,5 +5,7 @@ myenv
 scrape_all_sessions.py
 bertopic_model
 topic_summary.csv
-speeches_clean.csvvenv/
+speeches_clean.csv
+venv/
 data/
+widid_results/
