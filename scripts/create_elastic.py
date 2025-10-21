@@ -10,7 +10,7 @@ try:
 except Exception as e:
     print("Connection failed ❌:", e)
 
-index_name = "parliament_speeches"
+index_name = "parliament_speeches_d17"
 
 es.indices.delete(index=index_name, ignore=[400, 404]) # delete if exists, can be commented out after first run
 

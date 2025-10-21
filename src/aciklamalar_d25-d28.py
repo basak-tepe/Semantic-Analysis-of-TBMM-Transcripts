@@ -32,7 +32,7 @@ def extract_aciklamalar(text):
 def extract_speech_summaries(aciklamalar_text):
     """Parse the list of speech summaries from the AÇIKLAMALAR section (multiline safe)."""
     pattern = re.compile(
-        r"(\d+)\.\-\s*(.*?)\s+Milletvekili\s+(.*?)’?(?:ın|in|un|ün|nın|nin),\s*(.*?)açıklaması\s+(\d+(?::\d+)?)",
+        r"(\d+)\.\-\s*(.*?)\s+Milletvekili\s+(.*?)’?(?:ın|in|un|ün|nın|nin|nun|nün),\s*(.*?)açıklaması\s+(\d+(?::\d+)?)",
         re.UNICODE | re.IGNORECASE | re.DOTALL
     )
 
