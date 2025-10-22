@@ -1,12 +1,12 @@
 from elasticsearch import Elasticsearch 
 
 es = Elasticsearch(hosts=["http://localhost:9200"])
-index_name = "parliament_speeches"
+index_name = "parliament_speeches_d17"
 
 res = es.search(
     index=index_name,
     query={
-        "match": {"content": "demokrasi"}  # example word in Turkish
+        "match": {"session_id": "term17-year1-session63"}  # example word in Turkish
     },
     size=3
 )
