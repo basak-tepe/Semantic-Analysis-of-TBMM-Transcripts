@@ -1,0 +1,5 @@
+
+for fast copying the content under d22-y1_TXTs or anything of that kind //only takes tbmm.... folders and its contents
+
+rsync -avz --include='tbmm*/' --include='tbmm*/*' --exclude='*' \
+    cronus-basak:/home/tepe/deepseek/TPT/OCR/d22-y1_TXTs/ ./d22-y1_TXTs

@@ -90,7 +90,8 @@ if __name__ == "__main__":
     for term, years in terms_and_years.items():
         for year in years:
             # Adjust this to your local path
-            folder_path = f"/Volumes/PortableSSD/TPT/TXTs/d{term}-y{year}_txts/"
+            #folder_path = f"/Volumes/PortableSSD/TPT/TXTs/d{term}-y{year}_txts/"
+            folder_path = f"TXTs/d{term}-y{year}_txts/"
             for filepath in glob.glob(os.path.join(folder_path, "*.txt")):
                 if filepath.endswith(("fih.txt", "gnd.txt")):
                     continue
@@ -130,7 +131,10 @@ if __name__ == "__main__":
                     actions.append(doc)
 
     if actions:
-        success, failed = helpers.bulk(es, actions, stats_only=True)
-        print(f"\n✅ Indexed {success} documents, ❌ failed {failed}")
+        try:
+            success, failed = helpers.bulk(es, actions, stats_only=True)
+            print(f"\n✅ Indexed {success} documents, ❌ failed {failed}")
+        except Exception as e:
+            print("Bulk indexing failed ❌:", e)
     else:
         print("⚠️ No documents to index")
