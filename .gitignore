@@ -10,3 +10,5 @@ venv/
 data/
 widid_results/
 PDFs
+TXTS_deepseek
+*.DS_Store
