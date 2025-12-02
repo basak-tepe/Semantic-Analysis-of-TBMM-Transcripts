@@ -13,3 +13,4 @@ PDFs
 TXTS_deepseek
 *.DS_Store
 assets/
+*/__pycache__/

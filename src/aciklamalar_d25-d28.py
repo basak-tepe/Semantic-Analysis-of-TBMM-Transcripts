@@ -193,7 +193,7 @@ if __name__ == "__main__":
         for term, years in terms_and_years.items():
             for year in years:
                 # Adjust this to your local path
-                folder_path = f"/Volumes/PortableSSD/TPT/TXTs/d{term}-y{year}_txts/"
+                folder_path = f"TXTs/d{term}-y{year}_txts/"
                 # Check if directory exists to avoid glob errors or empty loops on missing drives
                 if not os.path.exists(folder_path):
                     print(f"⚠️ Directory not found: {folder_path}")
