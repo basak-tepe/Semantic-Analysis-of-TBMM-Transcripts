@@ -28,6 +28,8 @@ if not es.indices.exists(index=index_name):
                     "speech_no": {"type": "integer"},
                     "province": {"type": "keyword"},
                     "speech_giver": {"type": "text"},
+                    "political_party": {"type": "keyword"},
+                    "terms_served": {"type": "integer"},
                     "speech_title": {"type": "text"},
                     "page_ref": {"type": "keyword"},
                     "content": {"type": "text"}
