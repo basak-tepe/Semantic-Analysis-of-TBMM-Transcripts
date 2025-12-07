@@ -1,0 +1,34 @@
+"""API routes for t-SNE endpoints."""
+from fastapi import APIRouter, HTTPException
+
+from api.models.tsne_schemas import WordsResponse, TSNEImagesResponse
+from api.services.tsne_service import tsne_service
+
+router = APIRouter(prefix="/api/tsne", tags=["tsne"])
+
+
+@router.get("/words", response_model=WordsResponse)
+async def list_words():
+    """Get list of available words for t-SNE visualizations."""
+    words = tsne_service.get_available_words()
+    return WordsResponse(words=words)
+
+
+@router.get("/{word}", response_model=TSNEImagesResponse)
+async def get_tsne_images(word: str):
+    """Get all t-SNE images for a specific word."""
+    images = tsne_service.get_tsne_images_for_word(word)
+    
+    if not images:
+        # Check if word exists but has no images, or word doesn't exist
+        available_words = tsne_service.get_available_words()
+        if word not in available_words:
+            raise HTTPException(
+                status_code=404, 
+                detail=f"Word '{word}' not found. Available words: {', '.join(available_words)}"
+            )
+        # Word exists but no images found
+        return TSNEImagesResponse(word=word, images=[])
+    
+    return TSNEImagesResponse(word=word, images=images)
+
