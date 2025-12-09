@@ -19,3 +19,20 @@ class TSNEImagesResponse(BaseModel):
     """Response for t-SNE images."""
     word: str
     images: List[TSNEImage]
+
+
+class TSNEDataPoint(BaseModel):
+    """t-SNE data point from CSV."""
+    target_word: str
+    term: int
+    year: int
+    tsne_x: float
+    tsne_y: float
+    cluster_id: int
+    context: str
+
+
+class TSNEDataResponse(BaseModel):
+    """Response for t-SNE data points."""
+    word: str
+    data: List[TSNEDataPoint]
