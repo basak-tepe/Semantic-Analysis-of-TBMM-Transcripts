@@ -20,17 +20,24 @@ This project aims to perform semantic analysis on Turkish Grand National Assembl
    ```bash
    # Make sure Elasticsearch is running (Docker container)
    python src/aciklamalar_d25-d28.py
+
+   # If you wish to keep speeches in a csv file (You can do this to avoid)
+   python scripts/save_es_data.py
    ```
    **Step 2: Perform Topic Analysis**
    ```bash
    python src/analyze_speech_topics.py
    ```
    
-   **Step 3: Generate Parliament Galaxy Visualization**
+   **Step 3: Generate Visualization**
    ```bash
+   # Topic - MP Relationships
    python src/parliament_galaxy.py
    ```
-
+   ```bash
+   # Semantic Shift over Years
+   python src/widid.py
+   ```
 ## Features
 
 - **Data Scraping**: Extract transcripts from TBMM website
