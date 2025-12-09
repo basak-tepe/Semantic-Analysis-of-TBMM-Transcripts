@@ -10,7 +10,24 @@
 -p 9200:9200 \
 -e "discovery.type=single-node" \
 -e "xpack.security.enabled=false" \
+
 docker.elastic.co/elasticsearch/elasticsearch:8.6.1
+
+
+
+
+docker run -d \
+  --name es-node01 \
+  -p 9200:9200 \
+  -e "discovery.type=single-node" \
+  -e "xpack.security.enabled=false" \
+  -e "http.cors.enabled=true" \
+  -e "http.cors.allow-origin=http://localhost:3000" \
+  -e "http.cors.allow-methods=GET,POST,PUT,DELETE,OPTIONS" \
+  -e "http.cors.allow-headers=Content-Type" \
+  docker.elastic.co/elasticsearch/elasticsearch:8.6.1
+
+
 
 
 # now you should be seing a container named es-node01 running on localhost:9200 
