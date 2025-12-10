@@ -23,8 +23,6 @@ if not es.indices.exists(index=index_name):
                     "session_id": {"type": "keyword"},
                     "term": {"type": "integer"},
                     "year": {"type": "integer"},
-                    "term": {"type": "integer"},
-                    "year": {"type": "integer"},
                     "speech_no": {"type": "integer"},
                     "province": {"type": "keyword"},
                     "speech_giver": {"type": "text"},
@@ -32,7 +30,9 @@ if not es.indices.exists(index=index_name):
                     "terms_served": {"type": "integer"},
                     "speech_title": {"type": "text"},
                     "page_ref": {"type": "keyword"},
-                    "content": {"type": "text"}
+                    "content": {"type": "text"},
+                    "file": {"type": "keyword"},
+                    "session_date": {"type": "date", "format": "dd.MM.yyyy||strict_date_optional_time||epoch_millis"}
             }
         }
     )

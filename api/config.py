@@ -16,10 +16,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 MP_LOOKUP_CSV = PROJECT_ROOT / "mp_lookup.csv"
 TOPIC_SUMMARY_CSV = PROJECT_ROOT / "topic_summary.csv"
 
-# Assets directory for t-SNE images
-ASSETS_DIR = PROJECT_ROOT / "assets"
-
-# Widid results directory for t-SNE CSV data
+# Widid results directory for t-SNE coordinate CSV data
 WIDID_RESULTS_DIR = PROJECT_ROOT / "src" / "widid_results"
 
 # CORS settings

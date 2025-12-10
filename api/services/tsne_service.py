@@ -1,15 +1,13 @@
-"""Service for t-SNE image operations."""
-import base64
+"""Service for t-SNE coordinate data operations."""
 import csv
-import re
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from api.config import ASSETS_DIR, WIDID_RESULTS_DIR
+from api.config import WIDID_RESULTS_DIR
 
 
 class TSNEService:
-    """Service for t-SNE image operations."""
+    """Service for t-SNE coordinate data operations."""
     
     def __init__(self):
         self._available_words: Optional[List[str]] = None
@@ -33,43 +31,8 @@ class TSNEService:
         self._available_words = sorted(words)
         return words
     
-    def get_tsne_images_for_word(self, word: str) -> List[Dict]:
-        """Get all t-SNE images for a specific word."""
-        folder_path = ASSETS_DIR / f"{word}-tsne-widid"
-        
-        if not folder_path.exists():
-            return []
-        
-        images = []
-        pattern = re.compile(r'tsne_term(\d+)_year(\d+)_' + re.escape(word) + r'\.png')
-        
-        # Find all matching PNG files
-        for png_file in folder_path.glob(f"tsne_term*_year*_{word}.png"):
-            match = pattern.match(png_file.name)
-            if match:
-                term = int(match.group(1))
-                year = int(match.group(2))
-                
-                # Read and encode image as base64
-                try:
-                    with open(png_file, 'rb') as f:
-                        image_data = f.read()
-                        base64_data = base64.b64encode(image_data).decode('utf-8')
-                        images.append({
-                            'term': term,
-                            'year': year,
-                            'png': f"data:image/png;base64,{base64_data}"
-                        })
-                except Exception as e:
-                    print(f"Error reading {png_file}: {e}")
-                    continue
-        
-        # Sort by term, then year
-        images.sort(key=lambda x: (x['term'], x['year']))
-        return images
-    
     def get_tsne_data_for_word(self, word: str) -> List[Dict]:
-        """Get all t-SNE data points for a specific word from CSV."""
+        """Get all t-SNE coordinate data points for a specific word from CSV."""
         csv_path = WIDID_RESULTS_DIR / word / f"tsne_{word}.csv"
         
         if not csv_path.exists():

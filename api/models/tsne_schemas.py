@@ -1,13 +1,6 @@
 """Pydantic models for t-SNE endpoints."""
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
-
-
-class TSNEImage(BaseModel):
-    """t-SNE image information."""
-    term: int
-    year: int
-    png: str  # Base64 encoded PNG data URL
 
 
 class WordsResponse(BaseModel):
@@ -15,14 +8,8 @@ class WordsResponse(BaseModel):
     words: List[str]
 
 
-class TSNEImagesResponse(BaseModel):
-    """Response for t-SNE images."""
-    word: str
-    images: List[TSNEImage]
-
-
 class TSNEDataPoint(BaseModel):
-    """t-SNE data point from CSV."""
+    """t-SNE data point from CSV with coordinates and context."""
     target_word: str
     term: int
     year: int
@@ -30,9 +17,11 @@ class TSNEDataPoint(BaseModel):
     tsne_y: float
     cluster_id: int
     context: str
+    session_date: Optional[str] = None
+    file: Optional[str] = None
 
 
 class TSNEDataResponse(BaseModel):
-    """Response for t-SNE data points."""
+    """Response for t-SNE coordinate data points."""
     word: str
     data: List[TSNEDataPoint]

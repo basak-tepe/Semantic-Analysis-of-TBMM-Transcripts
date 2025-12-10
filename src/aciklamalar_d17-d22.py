@@ -20,6 +20,28 @@ except ImportError:
 LOOKUP_FILE = "mp_lookup.csv"
 mp_lookup = {}
 
+DATE_LOOKUP_FILE = "session_dates_lookup.csv"
+date_lookup = {}
+
+def load_date_lookup():
+    """Load the session date lookup table from CSV into a dictionary."""
+    global date_lookup
+    lookup_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), DATE_LOOKUP_FILE)
+    
+    if os.path.exists(lookup_path):
+        try:
+            with open(lookup_path, mode='r', encoding='utf-8') as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    date_lookup[row['filename']] = row['session_date']
+            print(f"✅ Loaded {len(date_lookup)} session dates from {DATE_LOOKUP_FILE}")
+        except Exception as e:
+            print(f"⚠️ Error loading date lookup file: {e}")
+            date_lookup = {}
+    else:
+        print(f"ℹ️ No {DATE_LOOKUP_FILE} found. Session dates will be null.")
+        date_lookup = {}
+
 def load_mp_lookup():
     """Load the MP lookup table from CSV into a dictionary."""
     global mp_lookup
@@ -308,6 +330,7 @@ def extract_full_speeches(raw_text, summaries):
 if __name__ == "__main__":
     # Load existing MP info
     load_mp_lookup()
+    load_date_lookup()
 
     es = Elasticsearch(hosts=["http://localhost:9200"])
     index_name = "parliament_speeches"
@@ -359,6 +382,10 @@ if __name__ == "__main__":
                 for s in full_speeches:
                     # Enrich with MP Info
                     mp_info = find_mp_info(s["speech_giver"])
+                    
+                    # Look up session date
+                    txt_filename = f"{parent_folder}.txt"
+                    session_date = date_lookup.get(txt_filename)
 
                     doc = {
                         "_index": index_name,
@@ -376,6 +403,7 @@ if __name__ == "__main__":
                             "speech_title": s["speech_title"],
                             "page_ref": s.get("page_ref"),
                             "content": s["content"],
+                            "session_date": session_date
                         },
                     }
                     actions.append(doc)
