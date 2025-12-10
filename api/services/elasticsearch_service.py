@@ -15,7 +15,12 @@ class ElasticsearchService:
     def _get_client(self) -> Elasticsearch:
         """Get or create Elasticsearch client."""
         if self._client is None:
-            self._client = Elasticsearch(hosts=[ELASTICSEARCH_HOST])
+            # Set compatibility mode for Elasticsearch 8.x server
+            # This tells the 9.x client to use version 8 headers
+            self._client = Elasticsearch(
+                hosts=[ELASTICSEARCH_HOST],
+                compatibility_version="8"
+            )
         return self._client
     
     def test_connection(self) -> bool:
@@ -50,7 +55,7 @@ class ElasticsearchService:
                 }
             }
             
-            # Elasticsearch 9.x supports body parameter
+            # Elasticsearch 8.x supports body parameter
             response = client.search(index=ELASTICSEARCH_INDEX, body=query)
             
             # Extract year and count data
@@ -93,7 +98,7 @@ class ElasticsearchService:
                 }
             }
             
-            # Elasticsearch 9.x supports body parameter
+            # Elasticsearch 8.x supports body parameter
             response = client.search(index=ELASTICSEARCH_INDEX, body=query)
             return response.get('hits', {}).get('total', {}).get('value', 0)
             
