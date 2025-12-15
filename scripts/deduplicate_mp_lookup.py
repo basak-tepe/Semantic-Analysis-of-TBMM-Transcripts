@@ -110,25 +110,41 @@ def normalize_all_names(mp_data):
     Normalize all names in the MP data.
     
     Returns:
-        Tuple of (normalized_data, normalization_map)
+        Tuple of (normalized_data, normalization_map, direct_duplicates)
         - normalized_data: dict with normalized names as keys
-        - normalization_map: dict mapping original -> normalized name
+        - normalization_map: dict mapping original -> normalized name  
+        - direct_duplicates: dict mapping normalized_name -> list of original names
     """
     normalized_data = {}
     normalization_map = {}
+    direct_duplicates = {}
     
     for original_name, data in mp_data.items():
         normalized_name = normalize_mp_name(original_name)
         normalization_map[original_name] = normalized_name
         
-        # If normalized name already exists, we'll merge later
+        # Track all originals that map to this normalized name
+        if normalized_name not in direct_duplicates:
+            direct_duplicates[normalized_name] = []
+        direct_duplicates[normalized_name].append(original_name)
+        
+        # If normalized name already exists, merge the data
         if normalized_name in normalized_data:
-            # Keep track of duplicates for merging
-            pass
+            # Merge data: prefer non-empty values
+            existing = normalized_data[normalized_name]
+            
+            # Merge party: keep non-empty
+            if not existing.get('party') and data.get('party'):
+                existing['party'] = data['party']
+            
+            # Merge terms: union of all terms
+            existing_terms = set(existing.get('terms', []))
+            new_terms = set(data.get('terms', []))
+            existing['terms'] = sorted(list(existing_terms | new_terms))
         else:
-            normalized_data[normalized_name] = data
+            normalized_data[normalized_name] = data.copy()
     
-    return normalized_data, normalization_map
+    return normalized_data, normalization_map, direct_duplicates
 
 
 def identify_problematic_names(normalized_data, max_length=70):
@@ -172,7 +188,7 @@ def deduplicate_mp_lookup(input_file, output_file, log_file, threshold=0.9):
     
     # Step 3: Normalize names
     print("\n🔄 Step 3: Normalizing all names...")
-    normalized_data, normalization_map = normalize_all_names(mp_data)
+    normalized_data, normalization_map, direct_duplicates = normalize_all_names(mp_data)
     
     # Count how many were normalized differently
     changed_by_normalization = sum(
@@ -180,6 +196,10 @@ def deduplicate_mp_lookup(input_file, output_file, log_file, threshold=0.9):
         if orig != norm
     )
     print(f"   ✓ {changed_by_normalization} names changed by normalization")
+    
+    # Count direct duplicates (multiple originals → same normalized)
+    direct_dup_count = sum(1 for variants in direct_duplicates.values() if len(variants) > 1)
+    print(f"   ✓ {direct_dup_count} normalized names have multiple original variants")
     
     # Step 4: Identify problematic names
     print("\n⚠️  Step 4: Identifying problematic names (>70 chars)...")
@@ -207,6 +227,23 @@ def deduplicate_mp_lookup(input_file, output_file, log_file, threshold=0.9):
     merged_data = {}
     merge_log = []
     
+    # First, log direct duplicates from normalization
+    for normalized_name, original_names in direct_duplicates.items():
+        if len(original_names) > 1:
+            # Multiple originals normalized to the same name
+            canonical = original_names[0]  # Use first as canonical
+            for variant in original_names[1:]:
+                merge_log.append({
+                    'original_name': variant,
+                    'canonical_name': canonical,
+                    'reason': 'direct_normalization',
+                    'original_party': mp_data[variant].get('party', ''),
+                    'original_terms': str(mp_data[variant].get('terms', [])),
+                    'merged_party': normalized_data[normalized_name].get('party', ''),
+                    'merged_terms': str(normalized_data[normalized_name].get('terms', []))
+                })
+    
+    # Then process fuzzy match groups
     for canonical_name, variants in groups.items():
         if not variants:
             # No duplicates, keep as is
@@ -226,25 +263,6 @@ def deduplicate_mp_lookup(input_file, output_file, log_file, threshold=0.9):
                     'original_terms': str(normalized_data[variant].get('terms', [])),
                     'merged_party': merged.get('party', ''),
                     'merged_terms': str(merged.get('terms', []))
-                })
-    
-    # Also log simple normalizations (apostrophe removal)
-    for original, normalized in normalization_map.items():
-        if original != normalized and normalized in merged_data:
-            # Check if this wasn't already logged as a fuzzy match
-            already_logged = any(
-                log['original_name'] == original 
-                for log in merge_log
-            )
-            if not already_logged:
-                merge_log.append({
-                    'original_name': original,
-                    'canonical_name': normalized,
-                    'reason': 'apostrophe_removal',
-                    'original_party': mp_data[original].get('party', ''),
-                    'original_terms': str(mp_data[original].get('terms', [])),
-                    'merged_party': merged_data[normalized].get('party', ''),
-                    'merged_terms': str(merged_data[normalized].get('terms', []))
                 })
     
     print(f"   ✓ Merged {len(merge_log)} duplicate entries")

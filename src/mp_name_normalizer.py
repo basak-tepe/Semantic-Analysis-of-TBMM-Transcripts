@@ -17,24 +17,33 @@ from typing import List, Dict, Tuple, Optional
 
 def normalize_mp_name(name: str) -> str:
     """
-    Normalize MP name by removing apostrophes and cleaning whitespace.
+    Normalize MP name by removing apostrophes, commas, and cleaning whitespace.
     
-    Takes the part before the apostrophe (') to handle cases like:
+    Takes the part before separators to handle cases like:
     - "John Doe" and "John Doe'" -> both become "John Doe"
     - "Ahmet Yılmaz'ın" -> becomes "Ahmet Yılmaz"
+    - "Mehmet Ali, additional text" -> becomes "Mehmet Ali"
     
     Args:
         name: Raw MP name from extraction
         
     Returns:
-        Normalized name without apostrophe suffix
+        Normalized name without apostrophe/comma suffix
     """
     if not name:
         return ""
     
     # Split by apostrophe and take the first part
-    # Handles both regular apostrophe (') and typographic apostrophe (')
-    name = re.split(r"['']", name)[0]
+    # Handles multiple apostrophe types:
+    # ' = U+0027 (APOSTROPHE)
+    # ' = U+2019 (RIGHT SINGLE QUOTATION MARK) 
+    # ‛ = U+201B (SINGLE HIGH-REVERSED-9 QUOTATION MARK)
+    # ` = U+0060 (GRAVE ACCENT)
+    name = re.split(r"['\u2019'\u201B`]", name)[0]
+    
+    # Also split by comma and take the first part
+    # This handles cases where additional text is appended after comma
+    name = name.split(',')[0]
     
     # Normalize whitespace
     name = re.sub(r"\s+", " ", name).strip()
@@ -98,7 +107,8 @@ def find_similar_names(
     name: str, 
     existing_names: List[str], 
     threshold: float = 0.9,
-    compare_first_n_words: int = 3
+    compare_first_n_words: int = 3,
+    lookup_data: Optional[Dict[str, Dict]] = None
 ) -> List[str]:
     """
     Find names with similar first N words using fuzzy matching.
@@ -107,14 +117,20 @@ def find_similar_names(
     - "John Kernel Smith" and "John Kernell Smith" (spelling variation)
     - "Ahmet Yılmaz" and "Ahmet Yilmaz" (accent variation)
     
+    Names without party data are considered as last resort matches.
+    
     Args:
         name: Name to find matches for
         existing_names: List of existing names to search in
         threshold: Similarity threshold (0.0-1.0), default 0.9 for ~90% match
         compare_first_n_words: Number of words to compare (default: 3)
+        lookup_data: Optional dict mapping names to their data (party, terms)
+                     Used to prioritize names with party data
         
     Returns:
-        List of matching names, sorted by similarity (highest first)
+        List of matching names, sorted by:
+        1. Similarity (highest first)
+        2. Has party data (preferred over no party data)
         
     Example:
         >>> find_similar_names("John Kernel", ["John Kernell", "Jane Doe"], 0.9)
@@ -139,12 +155,20 @@ def find_similar_names(
         similarity = calculate_similarity(name_prefix, existing_prefix)
         
         if similarity >= threshold:
-            matches.append((existing_name, similarity))
+            # Check if this name has party data (higher priority)
+            has_party_data = False
+            if lookup_data and existing_name in lookup_data:
+                party = lookup_data[existing_name].get('party')
+                has_party_data = bool(party and party.strip())
+            
+            matches.append((existing_name, similarity, has_party_data))
     
-    # Sort by similarity (highest first)
-    matches.sort(key=lambda x: x[1], reverse=True)
+    # Sort by similarity first, then by has_party_data (True before False)
+    # This means: high similarity + has party data comes first
+    # But names without party data can still match as last resort
+    matches.sort(key=lambda x: (x[1], x[2]), reverse=True)
     
-    # Return just the names, not the similarity scores
+    # Return just the names, not the similarity scores or party flags
     return [match[0] for match in matches]
 
 
@@ -279,8 +303,8 @@ def group_similar_names(
         if name in processed:
             continue
         
-        # Find all similar names
-        similar = find_similar_names(name, names, threshold)
+        # Find all similar names, passing lookup_data to prioritize names with party data
+        similar = find_similar_names(name, names, threshold, lookup_data=lookup_data)
         
         if not similar:
             # No matches, this name is canonical

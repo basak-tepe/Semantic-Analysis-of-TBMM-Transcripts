@@ -253,7 +253,8 @@ def extract_speech_summaries(raw_text):
                     matching_names = find_similar_names(
                         normalized_name, 
                         list(mp_lookup.keys()), 
-                        threshold=0.9
+                        threshold=0.9,
+                        lookup_data=mp_lookup
                     )
                     if matching_names:
                         normalized_name = matching_names[0]  # Use first match
