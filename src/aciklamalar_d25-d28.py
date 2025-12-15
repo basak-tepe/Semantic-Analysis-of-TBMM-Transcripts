@@ -18,14 +18,14 @@ except ImportError:
 
 # Import MP name normalization functions
 try:
-    from mp_name_normalizer import normalize_mp_name, is_valid_name_length, find_similar_names
+    from mp_name_normalizer import normalize_mp_name, is_valid_mp_name, find_similar_names
 except ImportError:
     print("Warning: Could not import mp_name_normalizer. Name normalization will be skipped.")
     normalize_mp_name = None
-    is_valid_name_length = None
+    is_valid_mp_name = None
     find_similar_names = None
 
-LOOKUP_FILE = "mp_lookup.csv"
+LOOKUP_FILE = "data/mp_lookup.csv"
 mp_lookup = {}
 
 DATE_LOOKUP_FILE = "session_dates_lookup.csv"
@@ -175,8 +175,8 @@ def extract_speech_summaries(aciklamalar_text):
         if normalize_mp_name:
             normalized_name = normalize_mp_name(raw_name)
             
-            # Handle long names (likely extraction errors)
-            if is_valid_name_length and not is_valid_name_length(normalized_name, max_length=70):
+            # Handle problematic names (long or containing conjunctions)
+            if is_valid_mp_name and not is_valid_mp_name(normalized_name, max_length=45):
                 # Try to find matching shorter name from lookup
                 if find_similar_names and mp_lookup:
                     matching_names = find_similar_names(
@@ -187,9 +187,9 @@ def extract_speech_summaries(aciklamalar_text):
                     )
                     if matching_names:
                         normalized_name = matching_names[0]  # Use first match
-                        print(f"   ⚠️  Mapped long name to: {normalized_name}")
+                        print(f"   ⚠️  Mapped problematic name to: {normalized_name}")
                     else:
-                        print(f"   ⚠️  Could not resolve long name: {normalized_name[:50]}...")
+                        print(f"   ⚠️  Could not resolve problematic name: {normalized_name[:50]}...")
         else:
             normalized_name = raw_name
         

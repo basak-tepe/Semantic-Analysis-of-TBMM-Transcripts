@@ -41,9 +41,9 @@ def normalize_mp_name(name: str) -> str:
     # ` = U+0060 (GRAVE ACCENT)
     name = re.split(r"['\u2019'\u201B`]", name)[0]
     
-    # Also split by comma and take the first part
-    # This handles cases where additional text is appended after comma
-    name = name.split(',')[0]
+    # Also split by comma and semicolon and take the first part
+    # This handles cases where additional text is appended after these separators
+    name = re.split(r"[,;]", name)[0]
     
     # Normalize whitespace
     name = re.sub(r"\s+", " ", name).strip()
@@ -51,7 +51,7 @@ def normalize_mp_name(name: str) -> str:
     return name
 
 
-def is_valid_name_length(name: str, max_length: int = 70) -> bool:
+def is_valid_name_length(name: str, max_length: int = 45) -> bool:
     """
     Check if name is within acceptable length.
     
@@ -60,12 +60,77 @@ def is_valid_name_length(name: str, max_length: int = 70) -> bool:
     
     Args:
         name: Name to check
-        max_length: Maximum acceptable length (default: 70 characters)
+        max_length: Maximum acceptable length (default: 45 characters)
         
     Returns:
         True if name length is valid, False otherwise
     """
     return len(name) <= max_length
+
+
+def contains_conjunction_words(name: str) -> bool:
+    """
+    Check if name contains Turkish conjunction words as separate tokens.
+    
+    Names containing "ve" (and) or "ile" (with) as standalone words typically
+    indicate compound names or concatenated text from multiple MPs.
+    
+    Examples of problematic names:
+    - "Ahmet Yılmaz ve Mehmet Ali" (two people)
+    - "Name ile Province Milletvekili" (name with description)
+    
+    Args:
+        name: Name to check
+        
+    Returns:
+        True if name contains "ve" or "ile" as separate words, False otherwise
+    """
+    if not name:
+        return False
+    
+    # Split by whitespace to get individual words
+    words = name.split()
+    
+    # Check if "ve" or "ile" exists as a standalone word (case-insensitive)
+    # Handle Turkish-specific case conversion: İ → i, I → ı
+    for word in words:
+        # Replace Turkish-specific characters before lowercasing
+        # İ (Turkish capital I with dot) → i
+        # I (Latin capital I) → keep as I for now, will lowercase to i
+        word_lower = word.replace('İ', 'i').lower()
+        # After lowercasing, also check the version where I→i (for Latin I)
+        word_latin_lower = word.replace('I', 'i').lower()
+        
+        if word_lower in ['ve', 'ile'] or word_latin_lower in ['ve', 'ile']:
+            return True
+    
+    return False
+
+
+def is_valid_mp_name(name: str, max_length: int = 45) -> bool:
+    """
+    Check if name passes all validation criteria.
+    
+    A valid MP name should:
+    1. Be within the maximum length (default: 45 characters)
+    2. NOT contain conjunction words "ve" or "ile" as separate tokens
+    
+    Args:
+        name: Name to check
+        max_length: Maximum acceptable length (default: 45 characters)
+        
+    Returns:
+        True if name is valid, False if it's problematic
+    """
+    # Check length
+    if not is_valid_name_length(name, max_length):
+        return False
+    
+    # Check for conjunction words
+    if contains_conjunction_words(name):
+        return False
+    
+    return True
 
 
 def get_first_n_words(name: str, n: int = 3) -> str:

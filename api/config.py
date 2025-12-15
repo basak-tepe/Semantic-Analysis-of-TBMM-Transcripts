@@ -13,8 +13,8 @@ ELASTICSEARCH_INDEX = os.getenv("ELASTICSEARCH_INDEX", "parliament_speeches")
 DATA_DIR = PROJECT_ROOT / "data"
 
 # CSV file paths
-MP_LOOKUP_CSV = PROJECT_ROOT / "mp_lookup.csv"
-TOPIC_SUMMARY_CSV = PROJECT_ROOT / "topic_summary.csv"
+MP_LOOKUP_CSV = DATA_DIR / "mp_lookup.csv"
+TOPIC_SUMMARY_CSV = DATA_DIR / "topic_summary.csv"
 
 # Widid results directory for t-SNE coordinate CSV data
 WIDID_RESULTS_DIR = PROJECT_ROOT / "src" / "widid_results"

@@ -25,7 +25,8 @@ sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(
 
 from mp_name_normalizer import (
     normalize_mp_name,
-    is_valid_name_length,
+    is_valid_mp_name,
+    contains_conjunction_words,
     group_similar_names,
     select_canonical_name,
     merge_mp_data
@@ -147,18 +148,33 @@ def normalize_all_names(mp_data):
     return normalized_data, normalization_map, direct_duplicates
 
 
-def identify_problematic_names(normalized_data, max_length=70):
+def identify_problematic_names(normalized_data, max_length=45):
     """
-    Identify names that are suspiciously long (likely extraction errors).
+    Identify names that are problematic (long or containing conjunctions).
+    
+    A name is problematic if:
+    1. Length exceeds max_length (default: 45 characters)
+    2. Contains "ve" or "ile" as separate words (compound names)
     
     Returns:
-        List of (name, length) tuples for problematic names
+        List of (name, reason) tuples for problematic names
     """
     problematic = []
     
     for name in normalized_data.keys():
-        if not is_valid_name_length(name, max_length):
-            problematic.append((name, len(name)))
+        reasons = []
+        
+        # Check length
+        if len(name) > max_length:
+            reasons.append(f"length={len(name)}")
+        
+        # Check for conjunction words
+        if contains_conjunction_words(name):
+            reasons.append("contains_conjunction")
+        
+        if reasons:
+            reason_str = ", ".join(reasons)
+            problematic.append((name, reason_str))
     
     return problematic
 
@@ -202,12 +218,12 @@ def deduplicate_mp_lookup(input_file, output_file, log_file, threshold=0.9):
     print(f"   ✓ {direct_dup_count} normalized names have multiple original variants")
     
     # Step 4: Identify problematic names
-    print("\n⚠️  Step 4: Identifying problematic names (>70 chars)...")
+    print(f"\n⚠️  Step 4: Identifying problematic names (>45 chars or contains 've'/'ile')...")
     problematic = identify_problematic_names(normalized_data)
     if problematic:
         print(f"   ⚠️  Found {len(problematic)} problematic names:")
-        for name, length in problematic[:5]:  # Show first 5
-            print(f"      - {name[:60]}... (length: {length})")
+        for name, reason in problematic[:5]:  # Show first 5
+            print(f"      - {name[:60]}... ({reason})")
         if len(problematic) > 5:
             print(f"      ... and {len(problematic) - 5} more")
     else:
@@ -307,11 +323,12 @@ if __name__ == "__main__":
     # Get the project root directory
     script_dir = os.path.dirname(os.path.abspath(__file__))
     project_root = os.path.dirname(script_dir)
+    data_dir = os.path.join(project_root, "data")
     
     # Define file paths
-    input_file = os.path.join(project_root, "mp_lookup.csv")
-    output_file = os.path.join(project_root, "mp_lookup.csv")  # Overwrite
-    log_file = os.path.join(project_root, "mp_deduplication_log.csv")
+    input_file = os.path.join(project_root,data_dir, "mp_lookup.csv")
+    output_file = os.path.join(project_root,data_dir, "mp_lookup.csv")  # Overwrite
+    log_file = os.path.join(project_root,data_dir, "mp_deduplication_log.csv")
     
     # Check if input file exists
     if not os.path.exists(input_file):

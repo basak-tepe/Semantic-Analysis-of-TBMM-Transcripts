@@ -19,3 +19,5 @@ __pycache__/
 node_modules/
 
 mp_lookup_backup.csv
+
+data/data_secret/*

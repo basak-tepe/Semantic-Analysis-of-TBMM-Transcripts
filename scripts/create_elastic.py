@@ -32,7 +32,10 @@ if not es.indices.exists(index=index_name):
                     "page_ref": {"type": "keyword"},
                     "content": {"type": "text"},
                     "file": {"type": "keyword"},
-                    "session_date": {"type": "date", "format": "dd.MM.yyyy||strict_date_optional_time||epoch_millis"}
+                    "session_date": {"type": "date", "format": "dd.MM.yyyy||strict_date_optional_time||epoch_millis"},
+                    "topic_id": {"type": "integer"},
+                    "topic_label": {"type": "keyword"},
+                    "topic_analyzed": {"type": "boolean"}
             }
         }
     )

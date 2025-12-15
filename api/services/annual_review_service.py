@@ -80,31 +80,31 @@ class AnnualReviewService:
         if self.topic_summary_df is None:
             return {}
         
-        # Filter out topic -1 (uncategorized)
-        topics = self.topic_summary_df[self.topic_summary_df['topic'] != -1].copy()
+        # Filter out topic -1 (uncategorized/outliers)
+        topics = self.topic_summary_df[self.topic_summary_df['topic_id'] != -1].copy()
         
-        # Get topic with highest total Count
+        # Get topic with highest total speech_count
         if topics.empty:
             return {}
         
         # Group by topic to get unique topics with their total counts
-        topic_counts = topics.groupby(['topic', 'Name']).agg({
-            'Count': 'first'  # Count is same for all rows of same topic
+        topic_counts = topics.groupby(['topic_id', 'topic_label']).agg({
+            'speech_count': 'sum'  # Sum all speech counts for this topic
         }).reset_index()
         
-        most_talked = topic_counts.loc[topic_counts['Count'].idxmax()]
+        most_talked = topic_counts.loc[topic_counts['speech_count'].idxmax()]
         
         # Calculate year-over-year change (simplified - comparing to previous year)
         change = "+New"  # Default for new topics
         
-        topic_name = self._format_topic_name(most_talked['Name'])
-        keywords = str(most_talked['Name']).split('_')[1:4] if '_' in str(most_talked['Name']) else []
-        description = f"Dominated parliamentary discourse with {int(most_talked['Count'])} mentions. "
+        topic_name = self._format_topic_name(most_talked['topic_label'])
+        keywords = str(most_talked['topic_label']).split('_')[1:4] if '_' in str(most_talked['topic_label']) else []
+        description = f"Dominated parliamentary discourse with {int(most_talked['speech_count'])} mentions. "
         description += f"Key themes: {', '.join(keywords[:3])}." if keywords else ""
         
         return {
             "name": topic_name,
-            "mentions": int(most_talked['Count']),
+            "mentions": int(most_talked['speech_count']),
             "change": change,
             "description": description,
             "color": "from-emerald-500 to-teal-600"
@@ -223,30 +223,29 @@ class AnnualReviewService:
         if self.topic_summary_df is None:
             return {}
         
-        # Filter out topic -1
-        topics = self.topic_summary_df[self.topic_summary_df['topic'] != -1].copy()
+        # Filter out topic -1 (outliers)
+        topics = self.topic_summary_df[self.topic_summary_df['topic_id'] != -1].copy()
         if topics.empty:
             return {}
         
         # Group by topic and get minimum count
-        topic_counts = topics.groupby(['topic', 'Name']).agg({
-            'Count': 'first',
-            'speech_giver': 'first',
-            'count': 'max'  # Get the MP who talked about it most
+        topic_counts = topics.groupby(['topic_id', 'topic_label']).agg({
+            'speech_count': 'sum',  # Total speeches for this topic
+            'speech_giver': 'first'  # Get one MP who talked about it
         }).reset_index()
         
-        niche = topic_counts.loc[topic_counts['Count'].idxmin()]
+        niche = topic_counts.loc[topic_counts['speech_count'].idxmin()]
         
-        topic_name = self._format_topic_name(niche['Name'])
-        keywords = str(niche['Name']).split('_')[1:3] if '_' in str(niche['Name']) else []
+        topic_name = self._format_topic_name(niche['topic_label'])
+        keywords = str(niche['topic_label']).split('_')[1:3] if '_' in str(niche['topic_label']) else []
         
-        description = f"Most specialized interest with {int(niche['Count'])} mentions by {niche['speech_giver']}. "
+        description = f"Most specialized interest with {int(niche['speech_count'])} mentions. "
         description += f"Unique focus on: {', '.join(keywords)}." if keywords else ""
         
         return {
             "name": topic_name,
             "mp": niche['speech_giver'],
-            "mentions": int(niche['Count']),
+            "mentions": int(niche['speech_count']),
             "description": description,
             "color": "from-yellow-500 to-amber-600"
         }
@@ -274,22 +273,22 @@ class AnnualReviewService:
         if self.speeches_df is None or self.topic_summary_df is None:
             return {}
         
-        # Filter topics to get speaker diversity
-        topics = self.topic_summary_df[self.topic_summary_df['topic'] != -1].copy()
+        # Filter topics to get speaker diversity (exclude outliers)
+        topics = self.topic_summary_df[self.topic_summary_df['topic_id'] != -1].copy()
         if topics.empty:
             return {}
         
         # Group by topic and count unique speakers
-        topic_diversity = topics.groupby(['topic', 'Name']).agg({
+        topic_diversity = topics.groupby(['topic_id', 'topic_label']).agg({
             'speech_giver': 'nunique',
-            'Count': 'first'
+            'speech_count': 'sum'
         }).reset_index()
         
-        topic_diversity.columns = ['topic', 'Name', 'speakers', 'mentions']
+        topic_diversity.columns = ['topic_id', 'topic_label', 'speakers', 'mentions']
         
         most_diverse = topic_diversity.loc[topic_diversity['speakers'].idxmax()]
         
-        topic_name = self._format_topic_name(most_diverse['Name'])
+        topic_name = self._format_topic_name(most_diverse['topic_label'])
         
         # Estimate perspectives (simplified)
         perspectives = min(int(most_diverse['speakers'] * 0.3), 15)

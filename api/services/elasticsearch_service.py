@@ -112,6 +112,7 @@ class ElasticsearchService:
         mp_name: Optional[str] = None,
         term: Optional[int] = None,
         year: Optional[int] = None,
+        topic_id: Optional[int] = None,
         from_date: Optional[str] = None,
         to_date: Optional[str] = None,
         size: int = 10,
@@ -119,13 +120,14 @@ class ElasticsearchService:
     ) -> Dict:
         """
         Search for speeches with various filters.
-        Returns speech documents with all fields including session_date.
+        Returns speech documents with all fields including session_date and topics.
         
         Args:
             query_text: Full text search on content
             mp_name: Filter by MP name
             term: Filter by parliamentary term
             year: Filter by year
+            topic_id: Filter by topic ID
             from_date: Filter speeches from this date (format: dd.MM.yyyy)
             to_date: Filter speeches to this date (format: dd.MM.yyyy)
             size: Number of results to return
@@ -163,6 +165,11 @@ class ElasticsearchService:
             if year is not None:
                 filter_clauses.append({
                     "term": {"year": year}
+                })
+            
+            if topic_id is not None:
+                filter_clauses.append({
+                    "term": {"topic_id": topic_id}
                 })
             
             # Date range filter
@@ -221,7 +228,10 @@ class ElasticsearchService:
                     'speech_title': source.get('speech_title'),
                     'page_ref': source.get('page_ref'),
                     'content': source.get('content'),
-                    'session_date': source.get('session_date')  # Include session_date
+                    'session_date': source.get('session_date'),
+                    'topic_id': source.get('topic_id'),
+                    'topic_label': source.get('topic_label'),
+                    'topic_probability': source.get('topic_probability')
                 })
             
             return {
@@ -247,6 +257,138 @@ class ElasticsearchService:
         """
         result = self.search_speeches(mp_name=mp_name, size=size)
         return result.get('speeches', [])
+    
+    def get_topic_statistics(self) -> List[Dict]:
+        """
+        Get aggregated statistics for all topics.
+        
+        Returns:
+            List of topic statistics with counts and labels
+        """
+        try:
+            client = self._get_client()
+            
+            query = {
+                "size": 0,
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"exists": {"field": "topic_id"}},
+                            {"term": {"topic_analyzed": True}}
+                        ]
+                    }
+                },
+                "aggs": {
+                    "topics": {
+                        "terms": {
+                            "field": "topic_id",
+                            "size": 1000,
+                            "order": {"_count": "desc"}
+                        },
+                        "aggs": {
+                            "topic_label": {
+                                "terms": {
+                                    "field": "topic_label",
+                                    "size": 1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            response = client.search(index=ELASTICSEARCH_INDEX, body=query)
+            
+            topics = []
+            if 'aggregations' in response and 'topics' in response['aggregations']:
+                buckets = response['aggregations']['topics']['buckets']
+                for bucket in buckets:
+                    topic_id = bucket['key']
+                    count = bucket['doc_count']
+                    
+                    # Get topic label
+                    label_buckets = bucket.get('topic_label', {}).get('buckets', [])
+                    topic_label = label_buckets[0]['key'] if label_buckets else f"Topic {topic_id}"
+                    
+                    topics.append({
+                        'topic_id': topic_id,
+                        'topic_label': topic_label,
+                        'speech_count': count
+                    })
+            
+            return topics
+            
+        except Exception as e:
+            print(f"Error getting topic statistics: {e}")
+            return []
+    
+    def get_topics_by_mp(self, mp_name: str) -> List[Dict]:
+        """
+        Get topic distribution for a specific MP.
+        
+        Args:
+            mp_name: Name of the MP
+            
+        Returns:
+            List of topics with counts for this MP
+        """
+        try:
+            client = self._get_client()
+            
+            query = {
+                "size": 0,
+                "query": {
+                    "bool": {
+                        "must": [
+                            {"match": {"speech_giver": mp_name}},
+                            {"exists": {"field": "topic_id"}},
+                            {"term": {"topic_analyzed": True}}
+                        ]
+                    }
+                },
+                "aggs": {
+                    "topics": {
+                        "terms": {
+                            "field": "topic_id",
+                            "size": 100,
+                            "order": {"_count": "desc"}
+                        },
+                        "aggs": {
+                            "topic_label": {
+                                "terms": {
+                                    "field": "topic_label",
+                                    "size": 1
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            response = client.search(index=ELASTICSEARCH_INDEX, body=query)
+            
+            topics = []
+            if 'aggregations' in response and 'topics' in response['aggregations']:
+                buckets = response['aggregations']['topics']['buckets']
+                for bucket in buckets:
+                    topic_id = bucket['key']
+                    count = bucket['doc_count']
+                    
+                    # Get topic label
+                    label_buckets = bucket.get('topic_label', {}).get('buckets', [])
+                    topic_label = label_buckets[0]['key'] if label_buckets else f"Topic {topic_id}"
+                    
+                    topics.append({
+                        'topic_id': topic_id,
+                        'topic_label': topic_label,
+                        'speech_count': count
+                    })
+            
+            return topics
+            
+        except Exception as e:
+            print(f"Error getting topics for MP: {e}")
+            return []
 
 
 # Global instance

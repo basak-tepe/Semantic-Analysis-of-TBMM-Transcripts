@@ -99,7 +99,7 @@ class CSVService:
         return list(lookup.keys())
     
     def get_topics_for_mp(self, mp_name: str, top_n: int = 4) -> List[Dict]:
-        """Get top topics for an MP."""
+        """Get top topics for an MP, excluding outliers (topic_id -1)."""
         df = self.load_topic_summary()
         
         if df.empty:
@@ -114,25 +114,133 @@ class CSVService:
         if mp_topics.empty:
             return []
         
+        # Exclude outliers (topic_id -1)
+        if 'topic_id' in mp_topics.columns:
+            mp_topics = mp_topics[mp_topics['topic_id'] != -1].copy()
+        
+        if mp_topics.empty:
+            return []
+        
+        # Use correct column names from topic_summary.csv
+        count_column = 'speech_count' if 'speech_count' in mp_topics.columns else 'count'
+        label_column = 'topic_label' if 'topic_label' in mp_topics.columns else 'Name'
+        
         # Calculate total speeches for percentage
-        total_speeches = mp_topics['count'].sum()
+        total_speeches = mp_topics[count_column].sum()
         
         # Get top N topics by count
-        top_topics = mp_topics.nlargest(top_n, 'count')
+        top_topics = mp_topics.nlargest(top_n, count_column)
         
         results = []
         for _, row in top_topics.iterrows():
-            topic_name = row.get('Name', 'Unknown Topic')
+            topic_name = row.get(label_column, 'Unknown Topic')
             if pd.isna(topic_name):
                 topic_name = 'Unknown Topic'
             
-            count = int(row.get('count', 0))
+            count = int(row.get(count_column, 0))
             percentage = round((count / total_speeches * 100), 1) if total_speeches > 0 else 0.0
             
             results.append({
                 'name': str(topic_name),
                 'count': count,
-                'percentage': percentage
+                'percentage': percentage,
+                'topic_id': int(row.get('topic_id', -1))
+            })
+        
+        return results
+    
+    def get_topic_details(self, topic_id: int, top_n_mps: int = 10) -> Optional[Dict]:
+        """
+        Get detailed information about a specific topic.
+        
+        Args:
+            topic_id: The topic ID to get details for
+            top_n_mps: Number of top MPs to return for this topic
+            
+        Returns:
+            Dictionary with topic details including top MPs, or None if not found
+        """
+        df = self.load_topic_summary()
+        
+        if df.empty or 'topic_id' not in df.columns:
+            return None
+        
+        # Filter for this topic (exclude outliers)
+        topic_data = df[df['topic_id'] == topic_id].copy()
+        
+        if topic_data.empty:
+            return None
+        
+        count_column = 'speech_count' if 'speech_count' in topic_data.columns else 'count'
+        label_column = 'topic_label' if 'topic_label' in topic_data.columns else 'Name'
+        
+        # Get topic label (should be same for all rows)
+        topic_label = topic_data.iloc[0].get(label_column, f'Topic {topic_id}')
+        
+        # Calculate total speeches in this topic
+        total_speeches = topic_data[count_column].sum()
+        
+        # Get top MPs for this topic
+        top_mps = topic_data.nlargest(top_n_mps, count_column)
+        
+        mps_list = []
+        for _, row in top_mps.iterrows():
+            mps_list.append({
+                'name': row['speech_giver'],
+                'speech_count': int(row[count_column]),
+                'percentage': round((row[count_column] / total_speeches * 100), 1) if total_speeches > 0 else 0.0
+            })
+        
+        return {
+            'topic_id': topic_id,
+            'topic_label': str(topic_label),
+            'total_speeches': int(total_speeches),
+            'num_mps': len(topic_data),
+            'top_mps': mps_list
+        }
+    
+    def get_all_topics_summary(self, exclude_outliers: bool = True) -> List[Dict]:
+        """
+        Get summary of all topics with basic statistics.
+        
+        Args:
+            exclude_outliers: If True, exclude topic_id -1
+            
+        Returns:
+            List of topic summaries sorted by speech count
+        """
+        df = self.load_topic_summary()
+        
+        if df.empty or 'topic_id' not in df.columns:
+            return []
+        
+        # Exclude outliers if requested
+        if exclude_outliers:
+            df = df[df['topic_id'] != -1].copy()
+        
+        count_column = 'speech_count' if 'speech_count' in df.columns else 'count'
+        label_column = 'topic_label' if 'topic_label' in df.columns else 'Name'
+        
+        # Group by topic_id to get aggregates
+        topic_groups = df.groupby('topic_id').agg({
+            count_column: 'sum',
+            'speech_giver': 'nunique',  # Count unique MPs
+            label_column: 'first'  # Get the label (should be same for all)
+        }).reset_index()
+        
+        # Rename columns for clarity
+        topic_groups.columns = ['topic_id', 'total_speeches', 'num_mps', 'topic_label']
+        
+        # Sort by total speeches descending
+        topic_groups = topic_groups.sort_values('total_speeches', ascending=False)
+        
+        results = []
+        for _, row in topic_groups.iterrows():
+            results.append({
+                'topic_id': int(row['topic_id']),
+                'topic_label': str(row['topic_label']),
+                'total_speeches': int(row['total_speeches']),
+                'num_mps': int(row['num_mps'])
             })
         
         return results
