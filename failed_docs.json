@@ -1,0 +1,128 @@
+[
+  {
+    "index": {
+      "_index": "parliament_speeches",
+      "_id": "term17-year2-session017-1",
+      "status": 400,
+      "error": {
+        "type": "mapper_parsing_exception",
+        "reason": "failed to parse field [session_date] of type [date] in document with id 'term17-year2-session017-1'. Preview of field's value: '01.00.1984'",
+        "caused_by": {
+          "type": "date_time_exception",
+          "reason": "Invalid value for MonthOfYear (valid values 1 - 12): 0"
+        }
+      },
+      "data": {
+        "session_id": "term17-year2-session017",
+        "term": 17,
+        "year": 2,
+        "file": "result.mmd",
+        "speech_no": 1,
+        "province": "\u0130zmir",
+        "speech_giver": "Mahmut Akk\u0131l\u0131\u00e7",
+        "political_party": "",
+        "terms_served": [
+          17
+        ],
+        "speech_title": "son g\u00fcnlerde H\u00fck\u00fcmetin izledi\u011fi hayvanc\u0131l\u0131k politikas\u0131n\u0131n \u00fclke yarar\u0131 a\u00e7\u0131s\u0131ndan yanl\u0131\u015f istikamete y\u00f6neldi\u011fi konusunda g\u00fcndem d\u0131\u015f\u0131",
+        "page_ref": null,
+        "content": "MAHMUT AKKILI\u00c7 (\u0130zmir) \u2014 Say\u0131n Ba\u015fkan, say\u0131n milletvekilleri; milletvekillerimizin b\u00fcy\u00fck \u00e7og\u00fcnlu\u011fu, kamuoyumuz ve \u00f6zellikle Do\u011fu Anadolu'dakisakin vatanda\u015flar\u0131m\u0131z, T\u00fcrkiye i\u00e7in hayvanc\u0131l\u0131\u011f\u0131n ne kadar \u00f6nem ta\u015f\u0131d\u0131\u011f\u0131n\u0131 \u00e7ok m\u00fckemmel bir bi\u00e7imde bilmektedirler. Hatta \u015funu ifade edeyim, yaln\u0131z kamuoyu ve milletvekilleriyle kalm\u0131yor, zaman zaman H\u00fck\u00fcmet \u00fcyeleri de hayvanc\u0131l\u0131\u011f\u0131n T\u00fcrkiye i\u00e7in \u00e7ok g\u00fcvenilir ve m\u00fckemmel bir gelir kayna\u011f\u0131 ve ayn\u0131 zamanda hakim beslenmesi i\u00e7in vazge\u00e7ilmez bir g\u0131da maddesi, \u00fcretim kayna\u011f\u0131 ve T\u00fcrkiye'nin muhta\u00e7 oldu\u011fu d\u00f6vizi sa\u011flayan bir kaynak oldu\u011funu nitelendirdiler; ama gel g\u00f6r ki, H\u00fck\u00fcmetin bir y\u0131ldan beri izledi\u011fi politika hayvanc\u0131l\u0131\u011f\u0131, \u00f6n plana \u00e7\u0131karmas\u0131 gerekirken, maalesef arka plana atm\u0131\u015ft\u0131r. ===== PAGE 5 ===== Tar\u0131m Orman ve K\u00f6y \u0130\u015fleri Bakanl\u0131\u011f\u0131na, \u00abYeniden d\u00fczenleme\u00bb denen ve yeni kararname ile getirillen uygulamalar T\u00fcrkiye hayvanc\u0131l\u0131\u011f\u0131n\u0131 baltalamaktad\u0131r. Ben isterdim ki, bu konu\u015fmay\u0131 hayvanc\u0131l\u0131\u011f\u0131n \u00e7okileri oldu\u011fu y\u00f6relerin milletvekili arkada\u015flar\u0131ndan biri yaps\u0131n; ama \u015funu bir kere bilsinler ki, ben b\u00fct\u00fcnilleri temsil ediyorum. \u00c7\u00fcnk\u00fc ben, hayat\u0131m\u0131 T\u00fcrkiye hayvanc\u0131l\u0131\u011f\u0131na vakfetmi\u015f durumday\u0131m. Muhterem arkada\u015flar, Tar\u0131m Orman ve K\u00f6y \u0130\u015fleri Bakanl\u0131\u011f\u0131nda son yap\u0131lan d\u00fczenlemelerle hayvanc\u0131l\u0131k \u00e7e\u015fitli birimler aras\u0131nda takasim edilmi\u015ftir, bundan sonra hayvanc\u0131l\u0131\u011f\u0131n gelece\u011fi karanl\u0131kt\u0131r. Say\u0131n Ba\u015fbakan burada olsalard\u0131 kendilerindenrica edecektim ama, H\u00fck\u00fcmet \u00fcyelerinden istirahediyorum, iletisinler; l\u00fctfen sabahlleyin saat 09.00'da Meclise gelen vatanda\u015flar\u0131m\u0131z\u0131n suratlanna bir baks\u0131nlar bakal\u0131m. Gelen zavalli insanlar\u0131n y\u00fczde 80'li c\u00fczu ve eksik beslenmi\u015f; hastal\u0131\u011fa mutlaka yakalanmaya m\u00fcsait insanlar durumuna gelmi\u015flerdir. Yaln\u0131z hastal\u0131\u011fa m\u00fcsait durum gelmek de\u011fil; \u00e7o\u011fu kere burada anlatt\u0131\u011f\u0131m\u0131z gibi, e\u011fer bir \u00fclkenin insanlar\u0131 \u00e7ocukya\u015f\u0131ndan itibaren iyi beslenemezlerse geri zek\u00e2l\u0131 olurlar, o \u00fclkede \u00e7eki\u015fme ilelebet devam eder gider. Arkada\u015flar, maalesef ge\u00e7en g\u00fcn burada yap\u0131lan tart\u0131\u015fmalar s\u0131ras\u0131nda a\u00e7\u0131kland\u0131\u011f\u0131 gibi, bu i\u015fin bu \u015fekilde yap\u0131lmas\u0131nda yine baz\u0131 egemen g\u00fc\u00e7lerin parma\u011f\u0131 vardur, etkisi vard\u0131r. (ANAP s\u0131ralar\u0131ndan g\u00fcr\u00fclt\u00fcler)",
+        "session_date": "01.00.1984"
+      }
+    }
+  },
+  {
+    "index": {
+      "_index": "parliament_speeches",
+      "_id": "term17-year3-session016-1",
+      "status": 400,
+      "error": {
+        "type": "mapper_parsing_exception",
+        "reason": "failed to parse field [session_date] of type [date] in document with id 'term17-year3-session016-1'. Preview of field's value: '75.10.1985'",
+        "caused_by": {
+          "type": "date_time_exception",
+          "reason": "Invalid value for DayOfMonth (valid values 1 - 28/31): 75"
+        }
+      },
+      "data": {
+        "session_id": "term17-year3-session016",
+        "term": 17,
+        "year": 3,
+        "file": "result.mmd",
+        "speech_no": 1,
+        "province": "Edirne",
+        "speech_giver": "T\u00fcrk\u00e2n Turgut Ar\u0131kan",
+        "political_party": "Anavatan PartisiVatanda\u015f PartisiDo\u011fru Yol Partisi",
+        "terms_served": [
+          17
+        ],
+        "speech_title": "ya\u015fl\u0131lar\u0131n hastanelerde muayene ve bak\u0131m sorunlar\u0131 hakk\u0131nda g\u00fcndem d\u0131\u015f\u0131",
+        "page_ref": null,
+        "content": "T\u00dcRK\u00c2N TURGUT ARIKAN (Edirne) \u2014 Say\u0131n Ba\u015fkan, de\u011ferli milletvekilleri; vatanda\u015flar\u0131m\u0131z\u0131n, hastanelerde muayene ve bak\u0131m konusunda kar\u015f\u0131la\u015ft\u0131klar\u0131 sorunlar\u0131 dikkatlerinize sunmak i\u00e7in s\u00f6z alm\u0131\u015f bulunuyorum. Burada somut bir \u00f6rne\u011fi dile getirece\u011fim; ama bu \u00f6rnek, vatanda\u015flar\u0131m\u0131z\u0131n hemen her g\u00fcn kar\u015f\u0131la\u015ft\u0131klar\u0131 genel bir prototiptir. Vatanda\u015f\u0131n ad\u0131: Ebubekir Bak\u0131rd\u00f6ven; ya\u015f\u0131: 76. B\u00fct\u00fcn \u00f6mr\u00fcn\u00fc bak\u0131rc\u0131l\u0131k yaparak s\u00fcrd\u00fcrm\u00fc\u015f, ya\u015flan\u0131nca kendi kendine emekli olmu\u015f, yani hi\u00e7bir sosyal g\u00fcvenlik kurumuna -ba\u011fl\u0131 alanmam\u0131\u015f ve halen evlatlar\u0131 taraf\u0131ndan bak\u0131l\u0131yor. 9 Ekim 1985 g\u00fcn\u00fc, a\u011f\u0131r kalp hastal\u0131\u011f\u0131 nedeniyle Sosyal Sigortalar Kurumu Hastanesine g\u00f6t\u00fcr\u00fcl\u00fcyor; muayene ediliyor, elektrokardiyografisi \u00e7ekiliyor ve ac\u0131len hastaneye yatmas\u0131 gerekti\u011fi belirtiliyor; ama \u00abSosyal Sigortalar Kurumu Hastanesine yat\u0131ramay\u0131z, T\u0131p Fak\u00fcltesi Hastanesine g\u00f6t\u00fcr\u00fcn\u00fcz\u00bb deniyor. Hasta, T\u0131p Fak\u00fcltesi Hastanesine g\u00f6t\u00fcr\u00fcl\u00fcyor, 1 gece acil serviste g\u00f6zalt\u0131nda tutuluyor. Acil serviste ila\u00e7 yoktur; evlatlar\u0131, re\u00e7eteyle beraber d\u0131\u015far\u0131 \u00e7\u0131karak ila\u00e7lar\u0131 al\u0131yor ve hastaneye getiriyorlar. Burada da, hastan\u0131n; mutlaka hastaneye yatmas\u0131 gerekti\u011fi belirtiliyor; ama \u00abBuraya yat\u0131ramay\u0131z, \u0130bni Sina Hastanesine gidim\u00bb deniliyor. Hasta, \u0130bni Sina Hastanesine g\u00f6t\u00fcr\u00fcl\u00fcyor; sabahleyin saat 7'de, saat 10'da muayene olmak \u00fczere randevu al\u0131n\u0131yor. Hasta, saat 10'dan 16'ya kadar bekledikten sonra s\u0131ra geliyor ve kalp muayenesi yap\u0131l\u0131yor; doktor ayr\u0131ca b\u00f6brekten \u015f\u00fcpheleniyor; b\u00f6brek muayenesi i\u00e7in 6 500 T\u00fcrk Liras\u0131 \u00fccret yat\u0131r\u0131lmas\u0131 isteniyor. Yanlar\u0131nda yeterli para yoktur; dolay\u0131s\u0131yla b\u00f6brek muayenesi yap\u0131lam\u0131yor. \u00abHastan\u0131n durumunun a\u011f\u0131r ve acil oldu\u011fu\u00bb s\u00f6yleniyor, bir tan\u0131d\u0131k yani bir torpil bulundu\u011fu takdirde hastaneye yat\u0131r\u0131labilece\u011fi belirtiliyor. \u00c7ocuklar\u0131n tan\u0131d\u0131k ve torpili yoktur... Hastaneden eve gelen hasta, 12 Ekim 1985 Cumartesi gecesi tekrar a\u011f\u0131rla\u015f\u0131yor. Yak\u0131n oldu\u011fu i\u00e7in, Sosyal Sigortalar Kurumu Hastanesinin acil servisine g\u00f6t\u00fcr\u00fcl\u00fcyor; b\u00f6brek i\u00e7in i\u011fne yap\u0131larak evine g\u00f6nderiliyor. Bu hastan\u0131n evlatlar\u0131, evden hastaneye ta\u015f\u0131nmak i\u00e7in, taksi, muayene, ila\u00e7, film ve elektrokardiyografi masraflar\u0131 i\u00e7in 20 bin liran\u0131n \u00fczerinde harcama yap\u0131yorlar; tan\u0131d\u0131klar\u0131 olmad\u0131\u011f\u0131 i\u00e7in de hastaneye yat\u0131rma imk\u00e2n\u0131 bulam\u0131yorlar. Say\u0131n milletvekilleri, Anayasan\u0131n 17 nci maddesi, \u00abHerkes, ya\u015fama hakk\u0131na sahiptir\u00bb der. Yine, Anayasan\u0131n 56 nc\u0131 maddesi, \u00abDevlet, herkesin, hayat\u0131n\u0131, beden ve ruh sa\u011fl\u0131\u011f\u0131 i\u00e7inde s\u00fcrd\u00fcrmesini sa\u011flamak; insan ve madde g\u00fcc\u00fcnde tasarruf ve verimi art\u0131rarak, i\u015fbirli\u011fini ger\u00e7ekle\u015ftirmek amac\u0131yla sa\u011fl\u0131k kurulu\u015flar\u0131n\u0131 tek elden planlay\u0131p hizmet vermesini d\u00fczenler\u00bb demektedir. H\u00fck\u00fcmet program\u0131n\u0131n 56 nc\u0131 sayfas\u0131nda da aynen \u015f\u00f6yle yaz\u0131yor: \u00abSa\u011fl\u0131k hizmetlerinin vas\u0131fl\u0131, g\u00fcvenilir, kolay eri\u015filebilir, formaliteden uzak ve \u00fclke sath\u0131nda dengeli bir \u015fekilde yayg\u0131nla\u015ft\u0131r\u0131lmas\u0131 ===== PAGE 10 ===== sa\u011flanacakt\u0131r; yine ayn\u0131 programda, \u00abHerkesin istedi\u011fi hastaneden yararlanmas\u0131n\u0131 sa\u011flayacak bir sistemin geli\u015ftirilmesini hedef al\u0131yoruz\u00bb deniliyor. Say\u0131n milletvekilleri, \u015fimdi soruyorum : 76 ya\u015f\u0131ndaki bir vatanda\u015f\u0131m\u0131z\u0131n ya\u015fama hakk\u0131 yok mudur? Eskimolar gibi, ya\u015fl\u0131lar\u0131 \u00f6l\u00fcme terk mi edelim? Houston\u2019da de\u011fil; ama Ankara\u2019n\u0131n g\u00f6be\u011findeki hastanelere, acil hastalar\u0131n yatmas\u0131n\u0131, nas\u0131l sa\u011flayal\u0131m? Hastaneye yatamad\u0131ktan sonra, filmlerin, elektrokardiyografilerin - i\u015fte, b\u00fct\u00fcn muayene i\u015flemlerinin hepsi elimde - ne yarar\u0131 olacakt\u0131r? Vatanda\u015flar\u0131m\u0131za hastane kap\u0131lar\u0131, neden daima bir tan\u0131d\u0131kla veya bir torpille a\u00e7\u0131lacakt\u0131r? Bu ne zamana kadar s\u00fcrecektir? Ille de torpil gerekiyorsa, acil ya\u015fam kavgas\u0131 veren b\u00fct\u00fcn vatanda\u015flar\u0131n torpili olarak, milletin vekili olarak, hastanelerekabul edilmeleri i\u00e7in bu k\u00fcrs\u00fcden talepte bulunuyorum. Sa\u011fl\u0131k ve Sosyal Yard\u0131m Bakanl\u0131\u011f\u0131 \u00abH\u0131z\u0131r Acil Merkezi\u00bb uygulamas\u0131n\u0131 ba\u015flatt\u0131; y\u00fcrekten kutluyorum. \u0130n\u015fallah iyi \u00e7al\u0131\u015f\u0131r; ama h\u00fck\u00fcmeti, hastane ve ila\u00e7 sorununun en k\u0131sa s\u00fcrede ve tan\u0131d\u0131ks\u0131z, torpilsiz \u00e7\u00f6zz\u00fcm\u00fc i\u00e7in gereken \u00f6nlemleri almaya \u00e7a\u011f\u0131r\u0131yorum. Y\u00fcce Meclise sayg\u0131lar sunar\u0131m. (HP ve Ba\u011f\u0131ms\u0131zlar s\u0131ralar\u0131ndan alk\u0131\u015flar)",
+        "session_date": "75.10.1985"
+      }
+    }
+  },
+  {
+    "index": {
+      "_index": "parliament_speeches",
+      "_id": "term17-year3-session016-2",
+      "status": 400,
+      "error": {
+        "type": "mapper_parsing_exception",
+        "reason": "failed to parse field [session_date] of type [date] in document with id 'term17-year3-session016-2'. Preview of field's value: '75.10.1985'",
+        "caused_by": {
+          "type": "date_time_exception",
+          "reason": "Invalid value for DayOfMonth (valid values 1 - 28/31): 75"
+        }
+      },
+      "data": {
+        "session_id": "term17-year3-session016",
+        "term": 17,
+        "year": 3,
+        "file": "result.mmd",
+        "speech_no": 2,
+        "province": "Bursa",
+        "speech_giver": "Mehmet Kemal G\u00f6k\u00e7ora",
+        "political_party": "",
+        "terms_served": [],
+        "speech_title": "ya\u015f meyve ve sebzelerin pazarlama ve fiyat sorunlar\u0131 konusunda g\u00fcndem d\u0131\u015f\u0131",
+        "page_ref": null,
+        "content": "Meclise sayg\u0131lar sunar\u0131m. (HP ve Ba\u011f\u0131ms\u0131zlar s\u0131ralar\u0131ndan alk\u0131\u015flar)",
+        "session_date": "75.10.1985"
+      }
+    }
+  },
+  {
+    "index": {
+      "_index": "parliament_speeches",
+      "_id": "term17-year3-session016-3",
+      "status": 400,
+      "error": {
+        "type": "mapper_parsing_exception",
+        "reason": "failed to parse field [session_date] of type [date] in document with id 'term17-year3-session016-3'. Preview of field's value: '75.10.1985'",
+        "caused_by": {
+          "type": "date_time_exception",
+          "reason": "Invalid value for DayOfMonth (valid values 1 - 28/31): 75"
+        }
+      },
+      "data": {
+        "session_id": "term17-year3-session016",
+        "term": 17,
+        "year": 3,
+        "file": "result.mmd",
+        "speech_no": 3,
+        "province": "Ordu",
+        "speech_giver": "Bahriye \u00dc\u00e7ok",
+        "political_party": "Cumhuriyet Halk Partisi(1977-1980)Halk\u00e7\u0131 Parti(1983-1987)Sosyaldemokrat Halk\u00e7\u0131 Parti(1987-1990)",
+        "terms_served": [
+          17
+        ],
+        "speech_title": "kom\u015fu \u00fclkelerin T\u00fcrkiye \u00fczerindeki olumsuz propagandalar\u0131 konusunda g\u00fcndem d\u0131\u015f\u0131",
+        "page_ref": null,
+        "content": "BAKAN\u0130 MEHMET AYDIN (Samsun) \u2014 Say\u0131n Ba\u015fkan, izin verir misiniz?",
+        "session_date": "75.10.1985"
+      }
+    }
+  }
+]

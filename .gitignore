@@ -17,3 +17,5 @@ assets/
 *.pyc
 __pycache__/
 node_modules/
+
+mp_lookup_backup.csv

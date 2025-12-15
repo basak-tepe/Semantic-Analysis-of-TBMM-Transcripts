@@ -16,6 +16,15 @@ except ImportError:
     print("Warning: Could not import get_mp_details. MP enrichment will be skipped.")
     get_mp_details = None
 
+# Import MP name normalization functions
+try:
+    from mp_name_normalizer import normalize_mp_name, is_valid_name_length, find_similar_names
+except ImportError:
+    print("Warning: Could not import mp_name_normalizer. Name normalization will be skipped.")
+    normalize_mp_name = None
+    is_valid_name_length = None
+    find_similar_names = None
+
 LOOKUP_FILE = "mp_lookup.csv"
 mp_lookup = {}
 
@@ -159,10 +168,34 @@ def extract_speech_summaries(aciklamalar_text):
 
     speeches = []
     for match in pattern.finditer(aciklamalar_text):
+        # Extract and normalize the speech giver name
+        raw_name = match.group(3).strip()
+        
+        # Apply name normalization if available
+        if normalize_mp_name:
+            normalized_name = normalize_mp_name(raw_name)
+            
+            # Handle long names (likely extraction errors)
+            if is_valid_name_length and not is_valid_name_length(normalized_name, max_length=70):
+                # Try to find matching shorter name from lookup
+                if find_similar_names and mp_lookup:
+                    matching_names = find_similar_names(
+                        normalized_name, 
+                        list(mp_lookup.keys()), 
+                        threshold=0.9
+                    )
+                    if matching_names:
+                        normalized_name = matching_names[0]  # Use first match
+                        print(f"   ⚠️  Mapped long name to: {normalized_name}")
+                    else:
+                        print(f"   ⚠️  Could not resolve long name: {normalized_name[:50]}...")
+        else:
+            normalized_name = raw_name
+        
         speeches.append({
             "speech_no": match.group(1),
             "province": match.group(2).strip(),
-            "speech_giver": match.group(3).strip(),
+            "speech_giver": normalized_name,
             "speech_title": re.sub(r"\s+", " ", match.group(4)).strip(),  # normalize whitespace
             "page_ref": match.group(5)
         })
