@@ -3,7 +3,7 @@ import csv
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from api.config import WIDID_RESULTS_DIR
+from api.config import WIDID_RESULTS_DIR, get_calendar_year_range, get_term_year_display
 
 
 class TSNEService:
@@ -43,10 +43,16 @@ class TSNEService:
             with open(csv_path, 'r', encoding='utf-8') as f:
                 reader = csv.DictReader(f)
                 for row in reader:
+                    term = int(row['term'])
+                    year = int(row['year'])
+                    calendar_start, calendar_end = get_calendar_year_range(term, year)
+                    
                     data_points.append({
                         'target_word': row['target_word'],
-                        'term': int(row['term']),
-                        'year': int(row['year']),
+                        'term': term,
+                        'year': year,
+                        'calendar_year_range': f"{calendar_start}-{calendar_end}",
+                        'display_label': get_term_year_display(term, year),
                         'tsne_x': float(row['tsne_x']),
                         'tsne_y': float(row['tsne_y']),
                         'cluster_id': int(row['cluster_id']),

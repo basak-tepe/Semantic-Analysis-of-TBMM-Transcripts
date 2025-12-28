@@ -11,7 +11,7 @@ This script:
 
 import os
 import sys
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Optional
 from elasticsearch import Elasticsearch, helpers
 from elasticsearch.exceptions import ConnectionError, NotFoundError
 from bertopic import BERTopic
@@ -23,7 +23,13 @@ ELASTICSEARCH_HOST = os.getenv("ELASTICSEARCH_HOST", "http://localhost:9200")
 ELASTICSEARCH_INDEX = os.getenv("ELASTICSEARCH_INDEX", "parliament_speeches")
 MODEL_SAVE_PATH = "../bertopic_model"
 TOPIC_SUMMARY_FILE = "../data/topic_summary.csv"
+TOPIC_DETAILS_FILE = "../data/data_secret/topic_details.csv"
 BATCH_SIZE = 1000  # Batch size for scroll API
+
+# LLM Configuration
+GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GROQ_MODEL = os.getenv("GROQ_MODEL")
+USE_LLM_NAMING = os.getenv("USE_LLM_NAMING", "true").lower() == "true"
 
 
 def connect_to_elasticsearch() -> Elasticsearch:
@@ -110,7 +116,7 @@ def fetch_all_speeches(es: Elasticsearch) -> List[Dict]:
         # Process batches
         while hits:
             batch_count += 1
-            print(f"   Batch {batch_count}: Processing {len(hits)} speeches...")
+            print(f"Batch {batch_count}: Processing {len(hits)} speeches...")
             
             for hit in hits:
                 source = hit['_source']
@@ -176,7 +182,7 @@ def run_topic_modeling(speeches: List[Dict]) -> Tuple[List[int], List[float], BE
         language="turkish",
         nr_topics=250,  # Automatically determine number of topics
         verbose=True,
-        calculate_probabilities=False  # Calculate topic probabilities
+        calculate_probabilities=False, # Calculate topic probabilities
         min_topic_size=3,
     )
     
@@ -187,9 +193,12 @@ def run_topic_modeling(speeches: List[Dict]) -> Tuple[List[int], List[float], BE
     topic_model.save(MODEL_SAVE_PATH)
     print(f"✅ Model trained and saved to {MODEL_SAVE_PATH}")
     
-    # Line 184, replace with:
-    #outlier_count = (topics == -1).sum() #TODO: fix the way you count outliers
-    #print(f"📊 Outliers: {outlier_count} speeches")
+    # Print topic statistics
+    topic_info = topic_model.get_topic_info()
+    num_topics = len(topic_info[topic_info['Topic'] != -1])
+    outlier_count = (topics == -1).sum()
+    print(f"📊 Discovered {num_topics} topics (excluding outliers)")
+    print(f"📊 Outliers: {outlier_count} speeches")
     
     return topics, topic_model
 
@@ -265,7 +274,8 @@ def export_topic_summary(
     speeches: List[Dict],
     topics: List[int],
     topic_model: BERTopic,
-    exclude_outliers: bool = True
+    exclude_outliers: bool = True,
+    groq_topic_mapping: Optional[Dict[int, str]] = None
 ) -> pd.DataFrame:
     """
     Create and export topic summary CSV for backup/analysis.
@@ -275,6 +285,7 @@ def export_topic_summary(
         topics: List of topic IDs
         topic_model: Trained BERTopic model
         exclude_outliers: If True, exclude topic_id -1 (outliers) from the summary
+        groq_topic_mapping: Optional dictionary mapping topic_id to Groq-generated readable names
         
     Returns:
         DataFrame with topic summary
@@ -301,8 +312,17 @@ def export_topic_summary(
     }
     df['topic_label'] = df['topic_id'].map(topic_labels)
     
+    # Add Groq-generated topic names if available
+    if groq_topic_mapping:
+        df['groq_topic_label'] = df['topic_id'].map(groq_topic_mapping)
+        print(f"   Added Groq-generated topic names for {df['groq_topic_label'].notna().sum():,} speeches")
+    
     # Create summary by MP and topic
-    summary = df.groupby(['speech_giver', 'topic_id', 'topic_label']).agg({
+    groupby_cols = ['speech_giver', 'topic_id', 'topic_label']
+    if groq_topic_mapping:
+        groupby_cols.append('groq_topic_label')
+    
+    summary = df.groupby(groupby_cols).agg({
         'id': 'count',
         'term': lambda x: list(set(x.dropna())),
         'year': lambda x: list(set(x.dropna()))
@@ -321,6 +341,59 @@ def export_topic_summary(
     print(f"   Unique MPs: {summary['speech_giver'].nunique()}")
     
     return summary
+
+
+def save_topic_details(topic_model: BERTopic, output_file: str = TOPIC_DETAILS_FILE):
+    """
+    Save detailed topic information to CSV including keywords and representative docs.
+    
+    This file is used by the LLM to generate human-readable topic names.
+    
+    Args:
+        topic_model: Trained BERTopic model
+        output_file: Path to save topic details CSV
+    """
+    print(f"\n📊 Saving topic details for LLM processing...")
+    
+    try:
+        # Get topic info
+        topic_info = topic_model.get_topic_info()
+        
+        # Add detailed keywords and representative docs
+        detailed_keywords = []
+        representative_docs_list = []
+        
+        for topic_id in topic_info['Topic']:
+            if topic_id == -1:
+                detailed_keywords.append("Outliers")
+                representative_docs_list.append("[]")
+            else:
+                # Get top 10 words
+                words = topic_model.get_topic(topic_id)
+                keywords = ', '.join([word for word, _ in words[:10]])
+                detailed_keywords.append(keywords)
+                
+                # Get representative documents
+                try:
+                    rep_docs = topic_model.get_representative_docs(topic_id)
+                    # Store as string representation of list
+                    representative_docs_list.append(str(rep_docs))
+                except:
+                    representative_docs_list.append("[]")
+        
+        topic_info['Keywords'] = detailed_keywords
+        topic_info['Representative_Docs'] = representative_docs_list
+        
+        # Ensure directory exists
+        os.makedirs(os.path.dirname(output_file), exist_ok=True)
+        
+        # Save to CSV
+        topic_info.to_csv(output_file, index=False, encoding='utf-8')
+        print(f"✅ Topic details saved to {output_file}")
+        print(f"   Total topics: {len(topic_info)} (including outliers)")
+        
+    except Exception as e:
+        print(f"⚠️  Error saving topic details: {e}")
 
 
 def visualize_top_topics(topic_model: BERTopic, n_topics: int = 10):
@@ -378,10 +451,51 @@ def main():
         es, speeches, topics, topic_model
     )
     
-    # Step 5: Export summary to CSV (backup)
-    summary = export_topic_summary(speeches, topics, topic_model)
+    # Step 5: Save detailed topic information for LLM
+    save_topic_details(topic_model, TOPIC_DETAILS_FILE)
     
-    # Step 6: Show top topics
+    # Step 6: Generate readable topic names with LLM (optional)
+    topic_mapping = None  # Initialize to None
+    if USE_LLM_NAMING and GROQ_API_KEY:
+        try:
+            print("\n" + "=" * 80)
+            print("🤖 LLM TOPIC NAME GENERATION")
+            print("=" * 80)
+            
+            from llm_topic_namer import process_all_topics, update_elasticsearch_topic_labels
+            
+            # Generate readable names
+            topic_mapping = process_all_topics(TOPIC_DETAILS_FILE, api_key=GROQ_API_KEY)
+            
+            if topic_mapping:
+                # Update Elasticsearch with readable names
+                updated_count = update_elasticsearch_topic_labels(es, topic_mapping, ELASTICSEARCH_INDEX)
+                
+                print("\n✅ LLM naming complete!")
+                print(f"📊 Generated names for {len(topic_mapping)} topics")
+                print(f"📊 Updated {updated_count:,} documents in Elasticsearch")
+            else:
+                print("⚠️  No topic mappings generated, skipping ES update")
+                topic_mapping = None  # Ensure it's None if empty
+                
+        except ImportError as e:
+            print(f"⚠️  Could not import llm_topic_namer: {e}")
+            print("   Install groq package: pip install groq")
+            topic_mapping = None
+        except Exception as e:
+            print(f"⚠️  LLM naming failed: {e}")
+            print("   Continuing with keyword-based labels")
+            topic_mapping = None
+    elif not GROQ_API_KEY:
+        print("\n⚠️  Skipping LLM naming: GROQ_API_KEY not set")
+        print("   Set environment variable GROQ_API_KEY to enable")
+    else:
+        print("\n⚠️  Skipping LLM naming: USE_LLM_NAMING=false")
+    
+    # Step 7: Export summary to CSV (backup) - after LLM naming if enabled
+    summary = export_topic_summary(speeches, topics, topic_model, groq_topic_mapping=topic_mapping)
+    
+    # Step 8: Show top topics
     visualize_top_topics(topic_model, n_topics=10)
     
     print("\n" + "=" * 80)
@@ -390,7 +504,10 @@ def main():
     print(f"📊 Total speeches analyzed: {len(speeches):,}")
     print(f"📊 Documents updated in ES: {success:,}")
     print(f"📊 Model saved to: {MODEL_SAVE_PATH}")
+    print(f"📊 Topic details saved to: {TOPIC_DETAILS_FILE}")
     print(f"📊 Summary saved to: {TOPIC_SUMMARY_FILE}")
+    if USE_LLM_NAMING and GROQ_API_KEY:
+        print(f"🤖 LLM-generated names: Enabled")
     print("=" * 80)
 
 

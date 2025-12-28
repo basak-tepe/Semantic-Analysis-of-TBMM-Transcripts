@@ -26,7 +26,22 @@ except ImportError:
     is_valid_mp_name = None
     find_similar_names = None
 
-LOOKUP_FILE = "data/mp_lookup.csv"
+# Import MP party lookup utility
+try:
+    from mp_party_lookup import get_party_for_term
+except ImportError:
+    print("Warning: Could not import mp_party_lookup. Party at time enrichment will be skipped.")
+    get_party_for_term = None
+
+# Import MP aggregated lookup utility (NEW - replaces mp_lookup.csv)
+try:
+    from mp_aggregated_lookup import get_mp_party_list, get_terms_served
+except ImportError:
+    print("Warning: Could not import mp_aggregated_lookup. MP enrichment will be limited.")
+    get_mp_party_list = None
+    get_terms_served = None
+
+LOOKUP_FILE = "data/mp_lookup.csv"  # DEPRECATED - kept for backward compatibility
 mp_lookup = {}
 
 DATE_LOOKUP_FILE = "session_dates_lookup.csv"
@@ -414,8 +429,27 @@ if __name__ == "__main__":
                 FOUND_SPEECH_TOTAL += len(full_speeches)
 
                 for s in full_speeches:
-                    # Enrich with MP Info
-                    mp_info = find_mp_info(s["speech_giver"])
+                    # Enrich with MP Info (NEW FORMAT - using aggregated lookup)
+                    political_party = []
+                    terms_served = []
+                    
+                    if get_mp_party_list and get_terms_served:
+                        # New format: list of "X.dönem Party Name"
+                        political_party = get_mp_party_list(s["speech_giver"])
+                        terms_served = get_terms_served(s["speech_giver"])
+                    else:
+                        # Fallback to old method if new module not available
+                        mp_info = find_mp_info(s["speech_giver"])
+                        # Convert old format to new list format
+                        if mp_info.get('party'):
+                            # Old format was just party name, convert to list
+                            political_party = [mp_info.get('party')]
+                        terms_served = mp_info.get('terms', [])
+                    
+                    # Look up party at time of speech
+                    political_party_at_time = None
+                    if get_party_for_term:
+                        political_party_at_time = get_party_for_term(s["speech_giver"], term)
                     
                     # Look up session date
                     txt_filename = f"{parent_folder}.txt"
@@ -433,8 +467,9 @@ if __name__ == "__main__":
                             "speech_no": int(s["speech_no"]),
                             "province": s["province"],
                             "speech_giver": s["speech_giver"],
-                            "political_party": mp_info.get('party'),
-                            "terms_served": mp_info.get('terms'),
+                            "political_party": political_party,  # NOW A LIST
+                            "political_party_at_time": political_party_at_time,
+                            "terms_served": terms_served,
                             "speech_title": s["speech_title"],
                             "page_ref": s.get("page_ref"),
                             "content": s["content"],

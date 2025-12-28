@@ -1,0 +1,1 @@
+27,201 : from analyze topic : valid speech num 

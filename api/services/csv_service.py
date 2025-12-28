@@ -2,11 +2,20 @@
 import ast
 import csv
 import hashlib
+import sys
+import os
 from pathlib import Path
 from typing import Dict, List, Optional
 import pandas as pd
 
-from api.config import MP_LOOKUP_CSV, TOPIC_SUMMARY_CSV
+from api.config import MPS_AGGREGATED_CSV, TOPIC_SUMMARY_CSV, TERM_YEAR_MAP
+
+# Add src directory to path for imports
+_src_path = Path(__file__).parent.parent.parent / "src"
+if str(_src_path) not in sys.path:
+    sys.path.insert(0, str(_src_path))
+
+from mp_aggregated_lookup import get_mp_party_list, get_terms_served, _mp_aggregated_data
 
 
 class CSVService:
@@ -22,47 +31,43 @@ class CSVService:
         return hashlib.md5(name.encode('utf-8')).hexdigest()[:8]
     
     def load_mp_lookup(self) -> Dict:
-        """Load MP lookup data from CSV."""
+        """
+        Load MP lookup data using aggregated data.
+        
+        Returns:
+            Dictionary mapping mp_id to MP data with:
+            - name: MP name
+            - party: List of strings like ["17.dönem Party1", "18.dönem Party2"]
+            - terms: List of term numbers the MP served
+        """
         if self._mp_lookup is not None:
             return self._mp_lookup
         
-        if not MP_LOOKUP_CSV.exists():
+        if not MPS_AGGREGATED_CSV.exists():
+            print(f"⚠️  MPS aggregated file not found: {MPS_AGGREGATED_CSV}")
             return {}
         
         mp_lookup = {}
         mp_id_map = {}
         
-        with open(MP_LOOKUP_CSV, 'r', encoding='utf-8') as f:
-            reader = csv.DictReader(f)
-            for row in reader:
-                name = row['speech_giver'].strip()
-                if not name:
-                    continue
-                
-                party = row['political_party'].strip() if row.get('political_party') else None
-                
-                # Parse terms - handle both string representation and empty
-                terms_str = row.get('terms', '[]').strip()
-                if terms_str and terms_str != '[]':
-                    try:
-                        terms = ast.literal_eval(terms_str)
-                        if not isinstance(terms, list):
-                            terms = []
-                    except (ValueError, SyntaxError):
-                        terms = []
-                else:
-                    terms = []
-                
-                mp_id = self._generate_mp_id(name)
-                mp_lookup[mp_id] = {
-                    'name': name,
-                    'party': party or 'Unknown',
-                    'terms': terms
-                }
-                mp_id_map[name] = mp_id
+        # Use the already-loaded aggregated data from mp_aggregated_lookup module
+        for mp_name in _mp_aggregated_data.keys():
+            # Get party list and terms for this MP
+            party_list = get_mp_party_list(mp_name)
+            terms = get_terms_served(mp_name)
+            
+            mp_id = self._generate_mp_id(mp_name)
+            mp_lookup[mp_id] = {
+                'name': mp_name,
+                'party': party_list,  # Now a list of strings: ["17.dönem Party1", ...]
+                'terms': terms
+            }
+            mp_id_map[mp_name] = mp_id
         
         self._mp_lookup = mp_lookup
         self._mp_id_map = mp_id_map
+        
+        print(f"✅ Loaded {len(mp_lookup)} MPs from aggregated data")
         return mp_lookup
     
     def load_topic_summary(self) -> pd.DataFrame:
@@ -123,7 +128,8 @@ class CSVService:
         
         # Use correct column names from topic_summary.csv
         count_column = 'speech_count' if 'speech_count' in mp_topics.columns else 'count'
-        label_column = 'topic_label' if 'topic_label' in mp_topics.columns else 'Name'
+        #label_column = 'topic_label' if 'topic_label' in mp_topics.columns else 'Name'
+        label_column = 'groq_topic_label' if 'groq_topic_label' in mp_topics.columns else 'topic_label'
         
         # Calculate total speeches for percentage
         total_speeches = mp_topics[count_column].sum()
@@ -247,20 +253,10 @@ class CSVService:
     
     def format_terms(self, terms: List[int]) -> List[str]:
         """Format term numbers into readable format like '2015-2019'."""
-        # Map term numbers to approximate years
-        # Term 17: 1983-1987, Term 18: 1987-1991, etc.
-        # This is approximate - adjust based on actual term dates
-        term_year_map = {
-            17: (1983, 1987), 18: (1987, 1991), 19: (1991, 1995),
-            20: (1995, 1999), 21: (1999, 2002), 22: (2002, 2007),
-            23: (2007, 2011), 24: (2011, 2015), 25: (2015, 2018),
-            26: (2018, 2023), 27: (2023, 2028), 28: (2023, 2028)
-        }
-        
         formatted_terms = []
         for term in sorted(terms):
-            if term in term_year_map:
-                start, end = term_year_map[term]
+            if term in TERM_YEAR_MAP:
+                start, end = TERM_YEAR_MAP[term]
                 formatted_terms.append(f"{start}-{end}")
             else:
                 formatted_terms.append(f"Term {term}")

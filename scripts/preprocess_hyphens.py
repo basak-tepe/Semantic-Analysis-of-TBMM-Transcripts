@@ -46,6 +46,7 @@ def main():
     parser.add_argument(
         "path",
         nargs="?",
+        default="/Users/wbagger/Documents/Semantic-Analysis-of-TBMM-Transcripts/data/TXTS_deepseek",
         help="Directory to process all result.mmd files recursively, or a single .mmd file (optional).",
     )
     args = parser.parse_args()

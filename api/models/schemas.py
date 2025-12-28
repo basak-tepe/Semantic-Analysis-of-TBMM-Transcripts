@@ -4,10 +4,10 @@ from pydantic import BaseModel
 
 
 class MPListItem(BaseModel):
-    """MP list item with basic information."""
+    """MP list item with basic information (lightweight for list view)."""
     id: str
     name: str
-    party: str
+    # No party field - keep payload small for list view
 
 
 class Topic(BaseModel):
@@ -28,7 +28,7 @@ class ActivityYear(BaseModel):
 class MPDetail(BaseModel):
     """Complete MP profile information."""
     name: str
-    party: str
+    party: List[str]  # List of strings like ["17.dönem Party1", "18.dönem Party2"]
     terms: List[str]
     topics: List[Topic]
     activity: List[ActivityYear]
@@ -36,8 +36,12 @@ class MPDetail(BaseModel):
 
 
 class MPListResponse(BaseModel):
-    """Response for list of MPs."""
+    """Response for list of MPs with pagination."""
     mps: List[MPListItem]
+    total: int
+    page: int
+    limit: int
+    total_pages: int
 
 
 class MPDetailResponse(BaseModel):

@@ -186,12 +186,35 @@
         let showAll = true;
         let currentWord = '';
         
+        // Term to calendar year mapping
+        const TERM_YEAR_MAP = {
+            17: [1983, 1987], 18: [1987, 1991], 19: [1991, 1995],
+            20: [1995, 1999], 21: [1999, 2002], 22: [2002, 2007],
+            23: [2007, 2011], 24: [2011, 2015], 25: [2015, 2018],
+            26: [2018, 2023], 27: [2023, 2028], 28: [2023, 2028]
+        };
+        
+        // Get calendar year range for a term/year combination
+        function getCalendarYearRange(term, year) {
+            if (!TERM_YEAR_MAP[term]) return '';
+            const [termStart, termEnd] = TERM_YEAR_MAP[term];
+            const calendarYear = termStart + (year - 1);
+            const endYear = Math.min(calendarYear + 1, termEnd);
+            return `${calendarYear}-${endYear}`;
+        }
+        
+        // Get display label for term/year
+        function getDisplayLabel(term, year) {
+            const range = getCalendarYearRange(term, year);
+            return range ? `d${term}y${year} (${range})` : `d${term}y${year}`;
+        }
+        
         // Load available words
         async function loadAvailableWords() {
             const wordSelect = document.getElementById('word-select');
             
             // Add your desired words here
-            const commonWords = ['demokrasi'];
+            const commonWords = ['emekli'];
             const path = '../src/widid_results';
             
             for (const word of commonWords) {
@@ -329,11 +352,28 @@
             return Array.from(clusters).sort((a, b) => a - b);
         }
         
-        // Get unique years
+        // Get unique term/year combinations, sorted by term first then year
         function getUniqueYears(data) {
-            const years = new Set();
-            data.forEach(row => years.add(parseInt(row.year)));
-            return Array.from(years).sort((a, b) => a - b);
+            const yearSet = new Set();
+            data.forEach(row => {
+                const key = `${row.term}_${row.year}`;
+                yearSet.add(key);
+            });
+            
+            // Convert to array of objects with term, year, and display info
+            const years = Array.from(yearSet).map(key => {
+                const [term, year] = key.split('_').map(n => parseInt(n));
+                return {
+                    term: term,
+                    year: year,
+                    sortKey: term * 100 + year,
+                    displayLabel: getDisplayLabel(term, year),
+                    calendarRange: getCalendarYearRange(term, year)
+                };
+            });
+            
+            // Sort by term first, then by year
+            return years.sort((a, b) => a.sortKey - b.sortKey);
         }
         
         // Filter data by year
@@ -344,7 +384,11 @@
             
             const years = getUniqueYears(data);
             if (yearIndex >= 0 && yearIndex < years.length) {
-                return data.filter(row => parseInt(row.year) === years[yearIndex]);
+                const selectedYear = years[yearIndex];
+                return data.filter(row => 
+                    parseInt(row.term) === selectedYear.term && 
+                    parseInt(row.year) === selectedYear.year
+                );
             }
             
             return data;
@@ -363,7 +407,7 @@
                     const y = clusterData.map(row => parseFloat(row.tsne_y));
                     const text = clusterData.map(row => 
                         `Cluster: ${row.cluster_id}<br>` +
-                        `Term: ${row.term}, Year: ${row.year}<br>` +
+                        `${getDisplayLabel(parseInt(row.term), parseInt(row.year))}<br>` +
                         `Context: ${row.context.substring(0, 150)}...`
                     );
                     
@@ -408,10 +452,11 @@
                 titleSuffix = `All Years - ${allData.length} points`;
             } else {
                 const currentYear = years[currentYearIndex];
-                const yearData = allData.filter(row => parseInt(row.year) === currentYear);
-                // Get term information for the current year
-                const term = yearData.length > 0 ? parseInt(yearData[0].term) : '';
-                titleSuffix = `d${term}y${currentYear} - ${yearData.length} points`;
+                const yearData = allData.filter(row => 
+                    parseInt(row.term) === currentYear.term && 
+                    parseInt(row.year) === currentYear.year
+                );
+                titleSuffix = `${currentYear.displayLabel} - ${yearData.length} points`;
             }
             
             const layout = {
@@ -499,11 +544,12 @@
                 stats.textContent = `Showing ${allData.length} points from all years`;
             } else {
                 const currentYear = years[currentYearIndex];
-                const yearData = allData.filter(row => parseInt(row.year) === currentYear);
-                // Get term information for the current year
-                const term = yearData.length > 0 ? parseInt(yearData[0].term) : '';
-                yearDisplay.textContent = `d${term}y${currentYear}`;
-                stats.textContent = `Showing ${yearData.length} points from d${term}y${currentYear}`;
+                const yearData = allData.filter(row => 
+                    parseInt(row.term) === currentYear.term && 
+                    parseInt(row.year) === currentYear.year
+                );
+                yearDisplay.textContent = currentYear.displayLabel;
+                stats.textContent = `Showing ${yearData.length} points from ${currentYear.displayLabel}`;
             }
         }
         
