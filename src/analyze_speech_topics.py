@@ -16,6 +16,7 @@ from elasticsearch import Elasticsearch, helpers
 from elasticsearch.exceptions import ConnectionError, NotFoundError
 from bertopic import BERTopic
 import pandas as pd
+import numpy as np
 import plotly.express as px
 
 # Configuration
@@ -188,6 +189,9 @@ def run_topic_modeling(speeches: List[Dict]) -> Tuple[List[int], List[float], BE
     
     # Fit and transform
     topics, _ = topic_model.fit_transform(contents)
+    
+    # Convert topics to numpy array to ensure proper array operations
+    topics = np.array(topics)
     
     # Save model for future use
     topic_model.save(MODEL_SAVE_PATH)
