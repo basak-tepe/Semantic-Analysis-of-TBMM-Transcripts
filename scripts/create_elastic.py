@@ -75,7 +75,19 @@ mapping = {
         "session_date": {"type": "date", "format": "dd.MM.yyyy||strict_date_optional_time||epoch_millis"},
         "topic_id": {"type": "integer"},
         "topic_label": {"type": "keyword"},
-        "topic_analyzed": {"type": "boolean"}
+        "topic_analyzed": {"type": "boolean"},
+        
+        # NER entities: nested array of extracted named entities
+        "ner_entities": {
+            "type": "nested",
+            "properties": {
+                "entity": {"type": "keyword"},
+                "entity_group": {"type": "keyword"},
+                "frequency": {"type": "integer"},
+                "wikipedia_url": {"type": "keyword"},
+                "confidence": {"type": "float"}
+            }
+        }
     }
 }
 
