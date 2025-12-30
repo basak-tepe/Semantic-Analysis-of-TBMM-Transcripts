@@ -87,8 +87,11 @@ class MPService:
         
         mp_name = mp_data['name']
         
-        # Get topics
+        # Get topics (aggregated)
         topics_data = csv_service.get_topics_for_mp(mp_name, top_n=4)
+        
+        # Get topics grouped by party
+        topics_by_party = csv_service.get_topics_by_party(mp_name, mp_data['party'], top_n=10)
         
         # Get activity from Elasticsearch
         activity_data = es_service.get_speech_activity_by_mp(mp_name)
@@ -104,6 +107,7 @@ class MPService:
             'party': mp_data['party'],
             'terms': terms,
             'topics': topics_data,
+            'topics_by_party': topics_by_party,
             'activity': activity_data,
             'stance': stance
         }
