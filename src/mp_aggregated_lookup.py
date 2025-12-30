@@ -46,7 +46,8 @@ def load_aggregated_lookup(csv_path: str = None) -> int:
             reader = csv.DictReader(f)
             
             for row in reader:
-                mp_name = row['speech_giver'].strip()
+                # Normalize whitespace: remove leading/trailing and collapse multiple spaces
+                mp_name = ' '.join(row['speech_giver'].strip().split())
                 term_data = {}
                 
                 # Process each term column (term1, term2, ..., term27, term28)
