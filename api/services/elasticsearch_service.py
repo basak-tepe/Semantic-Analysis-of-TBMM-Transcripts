@@ -15,11 +15,8 @@ class ElasticsearchService:
     def _get_client(self) -> Elasticsearch:
         """Get or create Elasticsearch client."""
         if self._client is None:
-            # Set compatibility mode for Elasticsearch 8.x server
-            # This tells the 9.x client to use version 8 headers
             self._client = Elasticsearch(
-                hosts=[ELASTICSEARCH_HOST],
-                compatibility_version="8"
+                hosts=[ELASTICSEARCH_HOST]
             )
         return self._client
     
@@ -231,7 +228,8 @@ class ElasticsearchService:
                     'session_date': source.get('session_date'),
                     'topic_id': source.get('topic_id'),
                     'topic_label': source.get('topic_label'),
-                    'topic_probability': source.get('topic_probability')
+                    'topic_probability': source.get('topic_probability'),
+                    'ner_entities': source.get('ner_entities', [])
                 })
             
             return {
