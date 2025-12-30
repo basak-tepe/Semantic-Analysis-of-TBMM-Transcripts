@@ -251,6 +251,106 @@ class CSVService:
         
         return results
     
+    def get_topics_by_party(self, mp_name: str, party_list: List[str], top_n: int = 10) -> Dict[str, List[Dict]]:
+        """
+        Get topics for an MP grouped by party.
+        
+        Args:
+            mp_name: Name of the MP
+            party_list: List of party strings like ["12.dönem Cumhuriyet Halk Partisi", ...]
+            top_n: Maximum number of topics to return per party
+            
+        Returns:
+            Dictionary mapping party name to list of topics: {party_name: [{name, count, percentage}, ...]}
+        """
+        df = self.load_topic_summary()
+        
+        if df.empty:
+            return {}
+        
+        if 'speech_giver' not in df.columns or 'term' not in df.columns:
+            return {}
+        
+        # Filter by MP name
+        mp_topics = df[df['speech_giver'] == mp_name].copy()
+        
+        if mp_topics.empty:
+            return {}
+        
+        # Exclude outliers
+        if 'topic_id' in mp_topics.columns:
+            mp_topics = mp_topics[mp_topics['topic_id'] != -1].copy()
+        
+        if mp_topics.empty:
+            return {}
+        
+        count_column = 'speech_count' if 'speech_count' in mp_topics.columns else 'count'
+        label_column = 'groq_topic_label' if 'groq_topic_label' in mp_topics.columns else 'topic_label'
+        
+        topics_by_party = {}
+        
+        # Process each party
+        for party_str in party_list:
+            # Extract term number and party name from "12.dönem Cumhuriyet Halk Partisi"
+            import re
+            import ast
+            match = re.match(r'(\d+)\.dönem\s+(.+)', party_str)
+            if not match:
+                continue
+            
+            term_num = int(match.group(1))
+            party_name = match.group(2).strip()
+            
+            # Filter topics for this MP and term
+            # Handle term column which may be a string list like "[27]" or integer
+            def term_matches(row_term, target_term):
+                if pd.isna(row_term):
+                    return False
+                # Try to parse as list string
+                try:
+                    if isinstance(row_term, str) and row_term.startswith('['):
+                        term_list = ast.literal_eval(row_term)
+                        return target_term in term_list
+                    else:
+                        return int(row_term) == target_term
+                except:
+                    return False
+            
+            party_term_topics = mp_topics[mp_topics['term'].apply(lambda x: term_matches(x, term_num))].copy()
+            
+            if party_term_topics.empty:
+                continue
+            
+            # Calculate total speeches for this party/term
+            total_speeches = party_term_topics[count_column].sum()
+            
+            if total_speeches == 0:
+                continue
+            
+            # Get top N topics
+            top_topics = party_term_topics.nlargest(top_n, count_column)
+            
+            topic_list = []
+            for _, row in top_topics.iterrows():
+                topic_name = row.get(label_column, 'Unknown Topic')
+                if pd.isna(topic_name):
+                    topic_name = 'Unknown Topic'
+                
+                count = int(row.get(count_column, 0))
+                percentage = round((count / total_speeches * 100), 1) if total_speeches > 0 else 0.0
+                
+                topic_list.append({
+                    'name': str(topic_name),
+                    'count': count,
+                    'percentage': percentage,
+                    'topic_id': int(row.get('topic_id', -1))
+                })
+            
+            if topic_list:
+                topics_by_party[party_name] = topic_list
+        
+        return topics_by_party
+    
     def format_terms(self, terms: List[int]) -> List[str]:
         """Format term numbers into readable format like '2015-2019'."""
         formatted_terms = []
