@@ -1,5 +1,5 @@
 """Pydantic models for API request/response schemas."""
-from typing import List, Optional
+from typing import List, Optional, Dict
 from pydantic import BaseModel
 
 
@@ -31,6 +31,7 @@ class MPDetail(BaseModel):
     party: List[str]  # List of strings like ["17.dönem Party1", "18.dönem Party2"]
     terms: List[str]
     topics: List[Topic]
+    topics_by_party: Optional[Dict[str, List[Topic]]] = None  # Topics grouped by party name
     activity: List[ActivityYear]
     stance: str
 
