@@ -30,6 +30,7 @@ class MPService:
     ) -> Dict:
         """
         Get paginated list of MPs without party info (for performance).
+        Only includes MPs who served starting from term 17 or later.
         
         Args:
             page: Page number (1-indexed)
@@ -42,9 +43,11 @@ class MPService:
         mp_lookup = csv_service.load_mp_lookup()
         
         # Build lightweight list (no party info)
+        # Filter to only include MPs who served starting from term 17 or later
         mps = [
             {'id': mp_id, 'name': mp_data['name']}
             for mp_id, mp_data in mp_lookup.items()
+            if mp_data.get('terms') and max(mp_data['terms']) >= 17
         ]
         
         # Sort by name
@@ -87,11 +90,11 @@ class MPService:
         
         mp_name = mp_data['name']
         
-        # Get topics (aggregated)
-        topics_data = csv_service.get_topics_for_mp(mp_name, top_n=4)
+        # Get topics from Elasticsearch (using HDBSCAN topics)
+        topics_data = es_service.get_topics_by_mp(mp_name, top_n=4)
         
-        # Get topics grouped by party
-        topics_by_party = csv_service.get_topics_by_party(mp_name, mp_data['party'], top_n=10)
+        # Get topics grouped by party from Elasticsearch (using political_party_at_time)
+        topics_by_party = es_service.get_topics_by_party_for_mp(mp_name, top_n=10)
         
         # Get activity from Elasticsearch
         activity_data = es_service.get_speech_activity_by_mp(mp_name)
@@ -114,14 +117,24 @@ class MPService:
     
     def _generate_stance(self, party: List[str], topics: List[Dict]) -> str:
         """Generate a stance description based on party and topics."""
-        # party is now a list like ["17.dönem Party1", "18.dönem Party2"]
-        party_str = ", ".join(party) if party else "Unknown party"
+        # party is a list like ["17.dönem Party1", "18.dönem Party2"]
+        # Extract unique party names without term numbers
+        import re
+        unique_parties = set()
+        for party_str in party:
+            match = re.match(r'\d+\.dönem\s+(.+)', party_str)
+            if match:
+                unique_parties.add(match.group(1))
+            else:
+                unique_parties.add(party_str)
+        
+        party_display = ", ".join(sorted(unique_parties)) if unique_parties else "Unknown party"
         
         if not topics:
-            return f"Member of {party_str} with parliamentary activity."
+            return f"Member of {party_display} with parliamentary activity."
         
         top_topic = topics[0]['name'] if topics else "various topics"
-        return f"Served in {party_str} with focus on {top_topic} and related parliamentary matters."
+        return f"Served in {party_display} with focus on {top_topic} and related parliamentary matters."
 
 
 # Global instance

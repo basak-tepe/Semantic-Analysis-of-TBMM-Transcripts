@@ -1,0 +1,25 @@
+# Minimal requirements for API deployment
+# This excludes heavy ML libraries that are only needed for data processing
+
+# Core API
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+pydantic>=2.0.0
+python-multipart>=0.0.6
+
+# Elasticsearch
+elasticsearch==8.11.0
+elastic-transport==8.11.0
+
+# Data handling (needed for CSV reading)
+pandas>=1.5.0
+numpy>=1.21.0
+
+# Utilities
+python-dateutil==2.9.0.post0
+requests>=2.31.0
+python-dotenv>=1.0.0
+certifi==2025.8.3
+urllib3==2.5.0
+six==1.17.0
+typing_extensions>=4.8.0

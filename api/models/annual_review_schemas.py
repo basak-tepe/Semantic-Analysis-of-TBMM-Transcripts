@@ -1,7 +1,7 @@
 """
 Pydantic schemas for Annual Review API responses.
 """
-from typing import List
+from typing import List, Optional
 from pydantic import BaseModel
 
 
@@ -18,25 +18,16 @@ class MostActiveMpResponse(BaseModel):
     """Response for the most active MP."""
     name: str
     speeches: int
-    hours: float
+    province: str
     description: str
     color: str
 
 
-class ShortestSpeakerResponse(BaseModel):
-    """Response for the shortest speaker (by average speech length)."""
+class MostRepresentedProvinceResponse(BaseModel):
+    """Response for the most represented province."""
     name: str
-    avgMinutes: float
     speeches: int
-    description: str
-    color: str
-
-
-class LongestSpeakerResponse(BaseModel):
-    """Response for the longest speaker (by average speech length)."""
-    name: str
-    avgMinutes: float
-    speeches: int
+    representatives: int
     description: str
     color: str
 
@@ -73,13 +64,12 @@ class AnnualReviewResponse(BaseModel):
     """Complete annual review response."""
     term: int
     year: int
-    mostTalkedTopic: MostTalkedTopicResponse
-    mostActiveMp: MostActiveMpResponse
-    shortestSpeaker: ShortestSpeakerResponse
-    longestSpeaker: LongestSpeakerResponse
-    nicheTopic: NicheTopicResponse
-    decliningInterest: DecliningInterestResponse
-    mostDiverseDebate: MostDiverseDebateResponse
+    mostTalkedTopic: Optional[MostTalkedTopicResponse] = None
+    mostActiveMp: Optional[MostActiveMpResponse] = None
+    mostRepresentedProvince: Optional[MostRepresentedProvinceResponse] = None
+    nicheTopic: Optional[NicheTopicResponse] = None
+    decliningInterest: Optional[DecliningInterestResponse] = None
+    mostDiverseDebate: Optional[MostDiverseDebateResponse] = None
 
 
 class YearInfo(BaseModel):

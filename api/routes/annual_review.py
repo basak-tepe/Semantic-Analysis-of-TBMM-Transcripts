@@ -15,7 +15,7 @@ router = APIRouter(prefix="/api/annual-review", tags=["annual-review"])
 @router.get("/available-years", response_model=AvailableYearsResponse)
 async def get_available_years():
     """
-    Get list of available term/year combinations.
+    Get list of available term/year combinations from Elasticsearch.
     
     Returns:
         AvailableYearsResponse: List of available years
@@ -34,7 +34,7 @@ async def get_available_years():
 @router.get("/data/{term}/{year}", response_model=AnnualReviewResponse)
 async def get_annual_review(term: int, year: int):
     """
-    Get annual review data for a specific term and year.
+    Get annual review data for a specific term and year from Elasticsearch.
     
     Args:
         term: Parliamentary term number
@@ -46,8 +46,16 @@ async def get_annual_review(term: int, year: int):
     try:
         data = annual_review_service.get_annual_review(term, year)
         
-        # Check if we got valid data
-        if not data.get('mostTalkedTopic') and not data.get('mostActiveMp'):
+        # Convert empty dicts to None for Optional fields
+        for key in ['mostTalkedTopic', 'mostActiveMp', 'mostRepresentedProvince', 
+                   'nicheTopic', 'decliningInterest', 'mostDiverseDebate']:
+            if key in data and data[key] == {}:
+                data[key] = None
+        
+        # Check if we got any valid data
+        if not any(data.get(key) for key in ['mostTalkedTopic', 'mostActiveMp', 
+                                             'mostRepresentedProvince', 'nicheTopic', 
+                                             'decliningInterest', 'mostDiverseDebate']):
             raise HTTPException(
                 status_code=404,
                 detail=f"No data found for term {term}, year {year}"

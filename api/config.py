@@ -24,19 +24,18 @@ TOPIC_SUMMARY_CSV = DATA_DIR / "topic_summary.csv"
 WIDID_RESULTS_DIR = PROJECT_ROOT / "src" / "widid_results"
 
 # CORS settings
-CORS_ORIGINS = [
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:3000",
-    "http://127.0.0.1:3001",
-]
+# Allow custom origins via environment variable, or use defaults
+CORS_ORIGINS = os.getenv("CORS_ORIGINS","https://tbmm-frontend-zo6hhrtq7a-ey.a.run.app,http://localhost:3000,http://localhost:3001,http://127.0.0.1:3000,http://127.0.0.1:3001").split(",")
+
+# For production, you can set CORS_ORIGINS="*" to allow all origins (less secure but convenient)
+# Or set specific domains: CORS_ORIGINS="https://yourfrontend.com,https://www.yourfrontend.com"
 
 # Term to calendar year range mapping
 TERM_YEAR_MAP = {
     17: (1983, 1987), 18: (1987, 1991), 19: (1991, 1995),
     20: (1995, 1999), 21: (1999, 2002), 22: (2002, 2007),
-    23: (2007, 2011), 24: (2011, 2015), 25: (2015, 2018),
-    26: (2018, 2023), 27: (2023, 2028), 28: (2023, 2028)
+    23: (2007, 2011), 24: (2011, 2015), 25: (2015, 2015),
+    26: (2015, 2018), 27: (2018, 2023), 28: (2023, 2028)
 }
 
 

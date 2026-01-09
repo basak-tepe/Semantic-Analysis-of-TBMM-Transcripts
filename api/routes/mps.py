@@ -26,10 +26,21 @@ async def list_mps(
 @router.get("/{mp_id}", response_model=MPDetailResponse)
 async def get_mp_detail(mp_id: str):
     """Get detailed information about a specific MP."""
-    mp_detail = mp_service.get_mp_detail(mp_id)
-    
-    if not mp_detail:
-        raise HTTPException(status_code=404, detail=f"MP with id {mp_id} not found")
-    
-    return MPDetailResponse(id=mp_id, data=mp_detail)
+    try:
+        mp_detail = mp_service.get_mp_detail(mp_id)
+        
+        if not mp_detail:
+            raise HTTPException(status_code=404, detail=f"MP with id {mp_id} not found")
+        
+        return MPDetailResponse(id=mp_id, data=mp_detail)
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        print(f"Error getting MP detail for {mp_id}: {e}")
+        print(traceback.format_exc())
+        raise HTTPException(
+            status_code=500,
+            detail=f"Error fetching MP details: {str(e)}"
+        )
 

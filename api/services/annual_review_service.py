@@ -1,10 +1,12 @@
 """
 Annual Review Service for aggregating parliamentary statistics.
+Uses Elasticsearch for all aggregations including HDBSCAN topic summaries.
 """
 import pandas as pd
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple
-from api.config import DATA_DIR
+from typing import Dict, List, Optional
+from api.config import DATA_DIR, ELASTICSEARCH_INDEX
+from api.services.elasticsearch_service import es_service
 
 
 class AnnualReviewService:
@@ -12,53 +14,57 @@ class AnnualReviewService:
     
     def __init__(self):
         self.topic_summary_df: Optional[pd.DataFrame] = None
-        self.speeches_df: Optional[pd.DataFrame] = None
         self._load_data()
     
     def _load_data(self):
-        """Load and cache CSV data."""
+        """Load and cache topic summary CSV data."""
         topic_summary_path = DATA_DIR / "topic_summary.csv"
-        speeches_path = DATA_DIR / "speeches_clean.csv"
         
         if topic_summary_path.exists():
             self.topic_summary_df = pd.read_csv(topic_summary_path)
         else:
-            raise FileNotFoundError(f"topic_summary.csv not found at {topic_summary_path}")
-        
-        if speeches_path.exists():
-            # Load only necessary columns for performance
-            self.speeches_df = pd.read_csv(
-                speeches_path,
-                usecols=['term', 'year', 'speech_giver', 'province', 'clean_content']
-            )
-        else:
-            raise FileNotFoundError(f"speeches_clean.csv not found at {speeches_path}")
+            print(f"⚠️  topic_summary.csv not found at {topic_summary_path}")
+            self.topic_summary_df = None
     
     def get_available_years(self) -> List[Dict[str, int]]:
-        """Get list of available term/year combinations."""
-        if self.speeches_df is None:
+        """Get list of available term/year combinations from Elasticsearch."""
+        try:
+            client = es_service._get_client()
+            
+            # Aggregate unique term/year combinations
+            response = client.search(
+                index=ELASTICSEARCH_INDEX,
+                body={
+                    "size": 0,
+                    "aggs": {
+                        "terms": {
+                            "terms": {"field": "term", "size": 50},
+                            "aggs": {
+                                "years": {
+                                    "terms": {"field": "year", "size": 10}
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+            
+            # Extract term/year combinations
+            years = []
+            for term_bucket in response['aggregations']['terms']['buckets']:
+                term = term_bucket['key']
+                for year_bucket in term_bucket['years']['buckets']:
+                    year = year_bucket['key']
+                    years.append({"term": int(term), "year": int(year)})
+            
+            # Sort by term desc, then year desc
+            years.sort(key=lambda x: (x['term'], x['year']), reverse=True)
+            
+            return years
+            
+        except Exception as e:
+            print(f"Error getting available years from ES: {e}")
             return []
-        
-        # Get unique term/year combinations
-        years = self.speeches_df[['term', 'year']].drop_duplicates()
-        years = years.sort_values(['term', 'year'], ascending=[False, False])
-        
-        return [
-            {"term": int(row['term']), "year": int(row['year'])}
-            for _, row in years.iterrows()
-        ]
-    
-    def _filter_by_term_year(self, df: pd.DataFrame, term: int, year: int) -> pd.DataFrame:
-        """Filter dataframe by term and year."""
-        return df[(df['term'] == term) & (df['year'] == year)]
-    
-    def _estimate_speaking_time(self, text: str) -> float:
-        """Estimate speaking time in hours from text (150 words/min average)."""
-        if pd.isna(text) or not text:
-            return 0.0
-        word_count = len(str(text).split())
-        minutes = word_count / 150
-        return minutes / 60
     
     def _format_topic_name(self, topic_name: str) -> str:
         """Format topic name from keyword format to readable text."""
@@ -76,179 +82,300 @@ class AnnualReviewService:
         return ' '.join(word.capitalize() for word in keywords.split())
     
     def get_most_talked_topic(self, term: int, year: int) -> Dict:
-        """Get the most discussed topic for a given term/year."""
-        if self.topic_summary_df is None:
+        """Get the most discussed topic for a given term/year using HDBSCAN topics from Elasticsearch."""
+        try:
+            client = es_service._get_client()
+            
+            # Aggregate topics by count for this term/year, using HDBSCAN topics
+            response = client.search(
+                index=ELASTICSEARCH_INDEX,
+                body={
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {"term": {"term": term}},
+                                {"term": {"year": year}},
+                                {"exists": {"field": "hdbscan_topic_id"}}
+                            ],
+                            "must_not": [
+                                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+                            ]
+                        }
+                    },
+                    "aggs": {
+                        "topics": {
+                            "terms": {
+                                "field": "hdbscan_topic_id",
+                                "size": 1,
+                                "order": {"_count": "desc"}
+                            },
+                            "aggs": {
+                                "topic_label": {
+                                    "terms": {
+                                        "field": "hdbscan_topic_label.keyword",
+                                        "size": 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+            
+            buckets = response['aggregations']['topics']['buckets']
+            if not buckets:
+                return {}
+            
+            most_talked_bucket = buckets[0]
+            speech_count = most_talked_bucket['doc_count']
+            
+            # Get topic label
+            label_buckets = most_talked_bucket.get('topic_label', {}).get('buckets', [])
+            topic_label = label_buckets[0]['key'] if label_buckets else "Unknown Topic"
+            
+            # Calculate year-over-year change (simplified - comparing to previous year)
+            change = "+New"  # Default for new topics
+            
+            description = f"Dominated parliamentary discourse with {speech_count} mentions. "
+            description += f"Topic: {topic_label}."
+            
+            return {
+                "name": topic_label,
+                "mentions": speech_count,
+                "change": change,
+                "description": description,
+                "color": "from-emerald-500 to-teal-600"
+            }
+            
+        except Exception as e:
+            print(f"Error getting most talked topic from ES: {e}")
             return {}
-        
-        # Filter out topic -1 (uncategorized/outliers)
-        topics = self.topic_summary_df[self.topic_summary_df['topic_id'] != -1].copy()
-        
-        # Get topic with highest total speech_count
-        if topics.empty:
-            return {}
-        
-        # Group by topic to get unique topics with their total counts
-        topic_counts = topics.groupby(['topic_id', 'topic_label']).agg({
-            'speech_count': 'sum'  # Sum all speech counts for this topic
-        }).reset_index()
-        
-        most_talked = topic_counts.loc[topic_counts['speech_count'].idxmax()]
-        
-        # Calculate year-over-year change (simplified - comparing to previous year)
-        change = "+New"  # Default for new topics
-        
-        topic_name = self._format_topic_name(most_talked['topic_label'])
-        keywords = str(most_talked['topic_label']).split('_')[1:4] if '_' in str(most_talked['topic_label']) else []
-        description = f"Dominated parliamentary discourse with {int(most_talked['speech_count'])} mentions. "
-        description += f"Key themes: {', '.join(keywords[:3])}." if keywords else ""
-        
-        return {
-            "name": topic_name,
-            "mentions": int(most_talked['speech_count']),
-            "change": change,
-            "description": description,
-            "color": "from-emerald-500 to-teal-600"
-        }
     
     def get_most_active_mp(self, term: int, year: int) -> Dict:
-        """Get the most active MP for a given term/year."""
-        if self.speeches_df is None:
-            return {}
-        
-        filtered = self._filter_by_term_year(self.speeches_df, term, year)
-        if filtered.empty:
-            return {}
-        
-        # Group by MP and calculate stats
-        mp_stats = filtered.groupby('speech_giver').agg({
-            'clean_content': ['count', lambda x: sum(self._estimate_speaking_time(text) for text in x)]
-        }).reset_index()
-        
-        mp_stats.columns = ['name', 'speeches', 'hours']
-        
-        # Get MP with most speeches
-        most_active = mp_stats.loc[mp_stats['speeches'].idxmax()]
-        
-        description = f"Delivered {int(most_active['speeches'])} speeches totaling {most_active['hours']:.1f} hours of floor time. "
-        description += "Demonstrated exceptional dedication to parliamentary discourse throughout the year."
-        
-        return {
-            "name": most_active['name'],
-            "speeches": int(most_active['speeches']),
-            "hours": round(float(most_active['hours']), 1),
-            "description": description,
-            "color": "from-purple-500 to-pink-600"
-        }
-    
-    def get_shortest_speaker(self, term: int, year: int) -> Dict:
-        """Get MP with shortest average speech length."""
-        if self.speeches_df is None:
-            return {}
-        
-        filtered = self._filter_by_term_year(self.speeches_df, term, year)
-        if filtered.empty:
-            return {}
-        
-        # Calculate average speech length per MP
-        mp_stats = []
-        for name, group in filtered.groupby('speech_giver'):
-            if len(group) < 5:  # Need at least 5 speeches for meaningful average
-                continue
+        """Get the most active MP for a given term/year using Elasticsearch."""
+        try:
+            client = es_service._get_client()
             
-            avg_minutes = sum(self._estimate_speaking_time(text) for text in group['clean_content']) * 60 / len(group)
-            mp_stats.append({
-                'name': name,
-                'avgMinutes': avg_minutes,
-                'speeches': len(group)
-            })
-        
-        if not mp_stats:
-            return {}
-        
-        mp_stats_df = pd.DataFrame(mp_stats)
-        shortest = mp_stats_df.loc[mp_stats_df['avgMinutes'].idxmin()]
-        
-        description = f"Mastered concise communication with an average of {shortest['avgMinutes']:.1f} minutes per speech. "
-        description += f"Delivered {int(shortest['speeches'])} impactful statements focusing on brevity and clarity."
-        
-        return {
-            "name": shortest['name'],
-            "avgMinutes": round(float(shortest['avgMinutes']), 1),
-            "speeches": int(shortest['speeches']),
-            "description": description,
-            "color": "from-blue-500 to-cyan-600"
-        }
-    
-    def get_longest_speaker(self, term: int, year: int) -> Dict:
-        """Get MP with longest average speech length."""
-        if self.speeches_df is None:
-            return {}
-        
-        filtered = self._filter_by_term_year(self.speeches_df, term, year)
-        if filtered.empty:
-            return {}
-        
-        # Calculate average speech length per MP
-        mp_stats = []
-        for name, group in filtered.groupby('speech_giver'):
-            if len(group) < 5:  # Need at least 5 speeches for meaningful average
-                continue
+            # Aggregate speeches by MP for this term/year
+            response = client.search(
+                index=ELASTICSEARCH_INDEX,
+                body={
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {"term": {"term": term}},
+                                {"term": {"year": year}}
+                            ]
+                        }
+                    },
+                    "aggs": {
+                        "by_speaker": {
+                            "terms": {
+                                "field": "speech_giver.keyword",
+                                "size": 1,
+                                "order": {"_count": "desc"}
+                            },
+                            "aggs": {
+                                "province": {
+                                    "terms": {"field": "province.keyword", "size": 1}
+                                }
+                            }
+                        }
+                    }
+                }
+            )
             
-            avg_minutes = sum(self._estimate_speaking_time(text) for text in group['clean_content']) * 60 / len(group)
-            mp_stats.append({
-                'name': name,
-                'avgMinutes': avg_minutes,
-                'speeches': len(group)
-            })
-        
-        if not mp_stats:
+            buckets = response['aggregations']['by_speaker']['buckets']
+            if not buckets:
+                return {}
+            
+            most_active = buckets[0]
+            mp_name = most_active['key']
+            speech_count = most_active['doc_count']
+            
+            # Get province if available
+            province_buckets = most_active.get('province', {}).get('buckets', [])
+            province = province_buckets[0]['key'] if province_buckets else "Unknown"
+            
+            description = f"Delivered {speech_count} speeches representing {province}. "
+            description += "Demonstrated exceptional dedication to parliamentary discourse throughout the year."
+            
+            return {
+                "name": mp_name,
+                "speeches": speech_count,
+                "province": province,
+                "description": description,
+                "color": "from-purple-500 to-pink-600"
+            }
+            
+        except Exception as e:
+            print(f"Error getting most active MP from ES: {e}")
             return {}
-        
-        mp_stats_df = pd.DataFrame(mp_stats)
-        longest = mp_stats_df.loc[mp_stats_df['avgMinutes'].idxmax()]
-        
-        description = f"Known for comprehensive analyses averaging {longest['avgMinutes']:.1f} minutes. "
-        description += f"Delivered {int(longest['speeches'])} speeches providing in-depth explorations of complex policy matters."
-        
-        return {
-            "name": longest['name'],
-            "avgMinutes": round(float(longest['avgMinutes']), 1),
-            "speeches": int(longest['speeches']),
-            "description": description,
-            "color": "from-orange-500 to-red-600"
-        }
+    
+    def get_most_represented_province(self, term: int, year: int) -> Dict:
+        """Get the province with highest average speeches per MP for a given term/year using Elasticsearch."""
+        try:
+            client = es_service._get_client()
+            
+            # Aggregate speeches by province (get all provinces to calculate averages)
+            response = client.search(
+                index=ELASTICSEARCH_INDEX,
+                body={
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {"term": {"term": term}},
+                                {"term": {"year": year}}
+                            ]
+                        }
+                    },
+                    "aggs": {
+                        "by_province": {
+                            "terms": {
+                                "field": "province.keyword",
+                                "size": 100,  # Get all provinces to calculate averages
+                                "order": {"_count": "desc"}  # Initial order by count, we'll re-sort by avg
+                            },
+                            "aggs": {
+                                "unique_mps": {
+                                    "cardinality": {"field": "speech_giver.keyword"}
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+            
+            buckets = response['aggregations']['by_province']['buckets']
+            if not buckets:
+                return {}
+            
+            # Calculate average for each province and find the one with highest average
+            provinces_with_avg = []
+            for bucket in buckets:
+                province_name = bucket['key']
+                speech_count = bucket['doc_count']
+                unique_mps = bucket['unique_mps']['value']
+                
+                if unique_mps > 0:
+                    avg_speeches_per_mp = speech_count / unique_mps
+                    provinces_with_avg.append({
+                        'name': province_name,
+                        'speeches': speech_count,
+                        'unique_mps': unique_mps,
+                        'avg_speeches_per_mp': avg_speeches_per_mp
+                    })
+            
+            if not provinces_with_avg:
+                return {}
+            
+            # Find province with highest average speeches per MP
+            most_represented = max(provinces_with_avg, key=lambda x: x['avg_speeches_per_mp'])
+            
+            province_name = most_represented['name']
+            speech_count = most_represented['speeches']
+            unique_mps = most_represented['unique_mps']
+            avg_speeches_per_mp = round(most_represented['avg_speeches_per_mp'], 1)
+            
+            description = f"Generated {speech_count} speeches from {unique_mps} representatives. "
+            description += f"Highest average of {avg_speeches_per_mp} speeches per MP. "
+            description += "Strong parliamentary presence and active engagement in legislative discourse."
+            
+            return {
+                "name": province_name,
+                "speeches": speech_count,
+                "representatives": int(unique_mps),
+                "avg_speeches_per_mp": avg_speeches_per_mp,
+                "description": description,
+                "color": "from-blue-500 to-cyan-600"
+            }
+            
+        except Exception as e:
+            print(f"Error getting most represented province from ES: {e}")
+            return {}
     
     def get_niche_topic(self, term: int, year: int) -> Dict:
-        """Get the most niche (least discussed) topic."""
-        if self.topic_summary_df is None:
+        """Get the most niche (least discussed) topic using HDBSCAN topics from Elasticsearch."""
+        try:
+            client = es_service._get_client()
+            
+            # Aggregate topics by count for this term/year, using HDBSCAN topics
+            response = client.search(
+                index=ELASTICSEARCH_INDEX,
+                body={
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {"term": {"term": term}},
+                                {"term": {"year": year}},
+                                {"exists": {"field": "hdbscan_topic_id"}}
+                            ],
+                            "must_not": [
+                                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+                            ]
+                        }
+                    },
+                    "aggs": {
+                        "topics": {
+                            "terms": {
+                                "field": "hdbscan_topic_id",
+                                "size": 100,
+                                "order": {"_count": "asc"}  # Ascending for least discussed
+                            },
+                            "aggs": {
+                                "topic_label": {
+                                    "terms": {
+                                        "field": "hdbscan_topic_label.keyword",
+                                        "size": 1
+                                    }
+                                },
+                                "sample_speaker": {
+                                    "terms": {
+                                        "field": "speech_giver.keyword",
+                                        "size": 1
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+            
+            buckets = response['aggregations']['topics']['buckets']
+            if not buckets:
+                return {}
+            
+            niche_bucket = buckets[0]  # First bucket is the least discussed
+            speech_count = niche_bucket['doc_count']
+            
+            # Get topic label
+            label_buckets = niche_bucket.get('topic_label', {}).get('buckets', [])
+            topic_label = label_buckets[0]['key'] if label_buckets else "Unknown Topic"
+            
+            # Get sample speaker
+            speaker_buckets = niche_bucket.get('sample_speaker', {}).get('buckets', [])
+            sample_speaker = speaker_buckets[0]['key'] if speaker_buckets else "Unknown"
+            
+            description = f"Most specialized interest with {speech_count} mentions. "
+            description += f"Topic: {topic_label}."
+            
+            return {
+                "name": topic_label,
+                "mp": sample_speaker,
+                "mentions": speech_count,
+                "description": description,
+                "color": "from-yellow-500 to-amber-600"
+            }
+            
+        except Exception as e:
+            print(f"Error getting niche topic from ES: {e}")
             return {}
-        
-        # Filter out topic -1 (outliers)
-        topics = self.topic_summary_df[self.topic_summary_df['topic_id'] != -1].copy()
-        if topics.empty:
-            return {}
-        
-        # Group by topic and get minimum count
-        topic_counts = topics.groupby(['topic_id', 'topic_label']).agg({
-            'speech_count': 'sum',  # Total speeches for this topic
-            'speech_giver': 'first'  # Get one MP who talked about it
-        }).reset_index()
-        
-        niche = topic_counts.loc[topic_counts['speech_count'].idxmin()]
-        
-        topic_name = self._format_topic_name(niche['topic_label'])
-        keywords = str(niche['topic_label']).split('_')[1:3] if '_' in str(niche['topic_label']) else []
-        
-        description = f"Most specialized interest with {int(niche['speech_count'])} mentions. "
-        description += f"Unique focus on: {', '.join(keywords)}." if keywords else ""
-        
-        return {
-            "name": topic_name,
-            "mp": niche['speech_giver'],
-            "mentions": int(niche['speech_count']),
-            "description": description,
-            "color": "from-yellow-500 to-amber-600"
-        }
     
     def get_declining_interest(self, term: int, year: int) -> Dict:
         """Get topic with biggest decline compared to previous year."""
@@ -269,40 +396,81 @@ class AnnualReviewService:
         }
     
     def get_most_diverse_debate(self, term: int, year: int) -> Dict:
-        """Get topic with most unique speakers."""
-        if self.speeches_df is None or self.topic_summary_df is None:
+        """Get topic with most unique speakers using HDBSCAN topics from Elasticsearch."""
+        try:
+            client = es_service._get_client()
+            
+            # Aggregate topics by unique speaker count for this term/year
+            response = client.search(
+                index=ELASTICSEARCH_INDEX,
+                body={
+                    "size": 0,
+                    "query": {
+                        "bool": {
+                            "filter": [
+                                {"term": {"term": term}},
+                                {"term": {"year": year}},
+                                {"exists": {"field": "hdbscan_topic_id"}}
+                            ],
+                            "must_not": [
+                                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+                            ]
+                        }
+                    },
+                    "aggs": {
+                        "topics": {
+                            "terms": {
+                                "field": "hdbscan_topic_id",
+                                "size": 100,
+                                "order": {"unique_speakers": "desc"}  # Order by unique speakers
+                            },
+                            "aggs": {
+                                "topic_label": {
+                                    "terms": {
+                                        "field": "hdbscan_topic_label.keyword",
+                                        "size": 1
+                                    }
+                                },
+                                "unique_speakers": {
+                                    "cardinality": {
+                                        "field": "speech_giver.keyword"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            )
+            
+            buckets = response['aggregations']['topics']['buckets']
+            if not buckets:
+                return {}
+            
+            most_diverse_bucket = buckets[0]  # First bucket has most unique speakers
+            unique_speakers = most_diverse_bucket.get('unique_speakers', {}).get('value', 0)
+            
+            # Get topic label
+            label_buckets = most_diverse_bucket.get('topic_label', {}).get('buckets', [])
+            topic_label = label_buckets[0]['key'] if label_buckets else "Unknown Topic"
+            
+            # Estimate perspectives (simplified)
+            perspectives = min(int(unique_speakers * 0.3), 15)
+            
+            description = f"Generated the most varied perspectives with {int(unique_speakers)} different speakers. "
+            description += f"Topic: {topic_label}. Sparked cross-party collaboration and diverse policy approaches."
+            
+            return {
+                "name": topic_label,
+                "speakers": int(unique_speakers),
+                "perspectives": perspectives,
+                "description": description,
+                "color": "from-indigo-500 to-violet-600"
+            }
+            
+        except Exception as e:
+            print(f"Error getting most diverse debate from ES: {e}")
             return {}
-        
-        # Filter topics to get speaker diversity (exclude outliers)
-        topics = self.topic_summary_df[self.topic_summary_df['topic_id'] != -1].copy()
-        if topics.empty:
-            return {}
-        
-        # Group by topic and count unique speakers
-        topic_diversity = topics.groupby(['topic_id', 'topic_label']).agg({
-            'speech_giver': 'nunique',
-            'speech_count': 'sum'
-        }).reset_index()
-        
-        topic_diversity.columns = ['topic_id', 'topic_label', 'speakers', 'mentions']
-        
-        most_diverse = topic_diversity.loc[topic_diversity['speakers'].idxmax()]
-        
-        topic_name = self._format_topic_name(most_diverse['topic_label'])
-        
-        # Estimate perspectives (simplified)
-        perspectives = min(int(most_diverse['speakers'] * 0.3), 15)
-        
-        description = f"Generated the most varied perspectives with {int(most_diverse['speakers'])} different speakers. "
-        description += "Sparked cross-party collaboration and diverse policy approaches."
-        
-        return {
-            "name": topic_name,
-            "speakers": int(most_diverse['speakers']),
-            "perspectives": perspectives,
-            "description": description,
-            "color": "from-indigo-500 to-violet-600"
-        }
     
     def get_annual_review(self, term: int, year: int) -> Dict:
         """Get complete annual review for a given term/year."""
@@ -311,8 +479,7 @@ class AnnualReviewService:
             "year": year,
             "mostTalkedTopic": self.get_most_talked_topic(term, year),
             "mostActiveMp": self.get_most_active_mp(term, year),
-            "shortestSpeaker": self.get_shortest_speaker(term, year),
-            "longestSpeaker": self.get_longest_speaker(term, year),
+            "mostRepresentedProvince": self.get_most_represented_province(term, year),
             "nicheTopic": self.get_niche_topic(term, year),
             "decliningInterest": self.get_declining_interest(term, year),
             "mostDiverseDebate": self.get_most_diverse_debate(term, year)

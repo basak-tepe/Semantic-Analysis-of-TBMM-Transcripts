@@ -1,0 +1,99 @@
+# This file specifies files that are NOT uploaded to Cloud Build
+# IMPORTANT: This overrides .gitignore for gcloud deployments
+
+# ===== LARGE DIRECTORIES - MUST EXCLUDE =====
+TXTs
+TXTs/
+**/TXTs/**
+myenv
+myenv/
+**/myenv/**
+TXTS_deepseek
+TXTS_deepseek/
+**/TXTS_deepseek/**
+PDFs
+PDFs/
+assets
+assets/
+bertopic_model
+bertopic_model/
+node_modules
+node_modules/
+venv
+venv/
+env
+env/
+ENV
+
+# ===== EXCLUDE LARGE DATA FILES =====
+data/speeches_clean.csv
+data/speeches_clean*
+data/*speeches*
+data/speech_keywords*
+data/mp_lookup.csv
+data/mps_by_term.csv
+data/mps_by_term_cleaned.csv
+data/mp_deduplication_log.csv
+data/topic_summary_backup.csv
+data/*.npy
+data/*.pkl
+data/data_secret
+
+# ===== EXCLUDE src/ FILES =====
+src/*.ipynb
+src/aciklamalar*.py
+src/analyze_speech_topics.py
+src/get_mp_details.py
+src/llm_topic_namer.py
+src/parliament_galaxy.py
+
+# ===== EXCLUDE OTHER DIRS =====
+scripts
+scripts/
+docs
+docs/
+
+# ===== PYTHON CACHE =====
+__pycache__
+__pycache__/
+**/__pycache__/**
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info
+.eggs
+
+# ===== NOTEBOOKS =====
+*.ipynb
+.ipynb_checkpoints
+.ipynb_checkpoints/
+
+# ===== GIT/IDE =====
+.git
+.git/
+.gitignore
+.vscode
+.vscode/
+.idea
+.idea/
+
+# ===== OS FILES =====
+*.DS_Store
+.DS_Store
+
+# ===== MISC =====
+*.log
+logs
+logs/
+.env
+.env.local
+failed_docs.json
+session_dates_lookup.csv
+session_dates_not_found.csv
+mp_lookup_backup.csv
+deploy.sh
+start_server.sh
+*.md
+README.md
+DEPLOYMENT.md

@@ -1,0 +1,78 @@
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+.eggs/
+env/
+venv/
+ENV/
+
+# Notebooks
+*.ipynb
+.ipynb_checkpoints/
+
+# Documentation
+docs/
+
+# Git
+.git/
+.gitignore
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Scripts
+scripts/
+
+# Specific large files to exclude from data/
+data/speeches_clean.csv
+data/speeches_clean copy.csv
+data/speech_keywords.csv
+data/mp_deduplication_log.csv
+data/mp_lookup.csv
+data/mps_by_term.csv
+data/mps_by_term_cleaned.csv
+data/keyword_embeddings.npy
+data/topic_summary_backup.csv
+
+# Specific source files to exclude from src/
+src/aciklamalar_d17-d22.py
+src/aciklamalar_d25-d28.py
+src/analyze_speech_topics.py
+src/analyze_speech_topics.ipynb
+src/dbscan.ipynb
+src/get_mp_details.py
+src/keyword_clustering_hdbscan.ipynb
+src/llm_topic_namer.py
+src/parliament_galaxy.py
+src/pdf_to_txt.ipynb
+src/semantic_lorenz.ipynb
+src/speech_keyword_extraction.ipynb
+src/test_hdbscan_parameters.ipynb
+src/widid.ipynb
+
+# Root level CSVs
+/*.csv
+
+# Misc
+tests/
+*.test.py
+*.log
+logs/
+.env
+.env.local
+deploy.sh
+start_server.sh
+failed_docs.json
+session_dates_lookup.csv
+session_dates_not_found.csv
+*.md
+DEPLOYMENT.md
+README.md
