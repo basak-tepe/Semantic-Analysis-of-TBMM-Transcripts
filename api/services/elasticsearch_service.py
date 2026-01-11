@@ -3,7 +3,7 @@ from typing import Dict, List, Optional
 from elasticsearch import Elasticsearch
 from elasticsearch.exceptions import ConnectionError, NotFoundError
 
-from api.config import ELASTICSEARCH_HOST, ELASTICSEARCH_INDEX, TERM_YEAR_MAP
+from api.config import ELASTICSEARCH_HOST, ELASTICSEARCH_INDEX, TERM_YEAR_MAP, get_calendar_year_range, EXCLUDED_TOPIC_IDS
 
 
 class ElasticsearchService:
@@ -88,12 +88,6 @@ class ElasticsearchService:
                 for term_bucket in term_buckets:
                     term = int(term_bucket['key'])
                     
-                    # Get calendar year range for this term
-                    if term not in TERM_YEAR_MAP:
-                        continue
-                    
-                    term_start, _ = TERM_YEAR_MAP[term]
-                    
                     # Process each year within this term
                     if 'by_year' in term_bucket:
                         year_buckets = term_bucket['by_year']['buckets']
@@ -101,8 +95,13 @@ class ElasticsearchService:
                             year_in_term = int(year_bucket['key'])
                             count = year_bucket['doc_count']
                             
-                            # Calculate actual calendar year
-                            calendar_year = term_start + (year_in_term - 1)
+                            # Get calendar year range using exact mapping
+                            calendar_year_range = get_calendar_year_range(term, year_in_term)
+                            if calendar_year_range == (0, 0):
+                                continue
+                            
+                            # Use start year for aggregation
+                            calendar_year = calendar_year_range[0]
                             
                             # Aggregate by calendar year (combine multiple term-year pairs for same year)
                             if calendar_year not in activity_by_year:
@@ -418,7 +417,7 @@ class ElasticsearchService:
     def get_topics_by_mp(self, mp_name: str, top_n: int = 4) -> List[Dict]:
         """
         Get topic distribution for a specific MP using HDBSCAN topics.
-        Filters out outliers (topic_id=-1) and extraction errors (topic_id=1).
+        Filters out outliers (topic_id=-1), extraction errors (topic_id=1), and excluded topics.
         
         Args:
             mp_name: Name of the MP
@@ -430,6 +429,15 @@ class ElasticsearchService:
         try:
             client = self._get_client()
             
+            # Build must_not clause with excluded topics
+            must_not_clauses = [
+                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+            ]
+            # Add excluded topic IDs
+            for topic_id in EXCLUDED_TOPIC_IDS:
+                must_not_clauses.append({"term": {"hdbscan_topic_id": topic_id}})
+            
             query = {
                 "size": 0,
                 "query": {
@@ -438,10 +446,7 @@ class ElasticsearchService:
                             {"term": {"speech_giver.keyword": mp_name}},
                             {"exists": {"field": "hdbscan_topic_id"}}
                         ],
-                        "must_not": [
-                            {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
-                            {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
-                        ]
+                        "must_not": must_not_clauses
                     }
                 },
                 "aggs": {
@@ -475,7 +480,14 @@ class ElasticsearchService:
             topics = []
             if 'aggregations' in response and 'topics' in response['aggregations']:
                 buckets = response['aggregations']['topics']['buckets']
-                for bucket in buckets:
+                # Filter out excluded topics from buckets (defensive check)
+                # Handle both integer and string topic IDs from Elasticsearch
+                filtered_buckets = [
+                    b for b in buckets 
+                    if int(b['key']) not in EXCLUDED_TOPIC_IDS
+                ]
+                
+                for bucket in filtered_buckets:
                     topic_id = bucket['key']
                     count = bucket['doc_count']
                     
@@ -503,7 +515,7 @@ class ElasticsearchService:
         """
         Get topics for an MP grouped by political party using HDBSCAN topics.
         Uses political_party_at_time field for accurate party association.
-        Filters out outliers (topic_id=-1) and extraction errors (topic_id=1).
+        Filters out outliers (topic_id=-1), extraction errors (topic_id=1), and excluded topics.
         
         Args:
             mp_name: Name of the MP
@@ -515,6 +527,15 @@ class ElasticsearchService:
         try:
             client = self._get_client()
             
+            # Build must_not clause with excluded topics
+            must_not_clauses = [
+                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+            ]
+            # Add excluded topic IDs
+            for topic_id in EXCLUDED_TOPIC_IDS:
+                must_not_clauses.append({"term": {"hdbscan_topic_id": topic_id}})
+            
             query = {
                 "size": 0,
                 "query": {
@@ -524,10 +545,7 @@ class ElasticsearchService:
                             {"exists": {"field": "hdbscan_topic_id"}},
                             {"exists": {"field": "political_party_at_time"}}
                         ],
-                        "must_not": [
-                            {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
-                            {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
-                        ]
+                        "must_not": must_not_clauses
                     }
                 },
                 "aggs": {
@@ -571,7 +589,14 @@ class ElasticsearchService:
                     if 'topics' in party_bucket:
                         topic_buckets = party_bucket['topics']['buckets']
                         
-                        for topic_bucket in topic_buckets:
+                        # Filter out excluded topics from buckets (defensive check)
+                        # Handle both integer and string topic IDs from Elasticsearch
+                        filtered_topic_buckets = [
+                            b for b in topic_buckets 
+                            if int(b['key']) not in EXCLUDED_TOPIC_IDS
+                        ]
+                        
+                        for topic_bucket in filtered_topic_buckets:
                             topic_id = topic_bucket['key']
                             count = topic_bucket['doc_count']
                             
@@ -923,7 +948,7 @@ class ElasticsearchService:
                 "terms_range": {"min": 0, "max": 0},
                 "years_range": {"min": 0, "max": 0}
             }
-    
+
     def search_by_entity(self, entity_name: str, entity_type: Optional[str] = None, size: int = 20, from_: int = 0) -> Dict:
         """
         Search speeches by NER entity name and optionally by entity type.

@@ -7,6 +7,7 @@ import csv
 import difflib
 import ast
 import sys
+from typing import List, Dict
 
 # Ensure we can import get_mp_details if running from a different directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -176,8 +177,10 @@ def extract_aciklamalar(text):
 
 def extract_speech_summaries(aciklamalar_text):
     """Parse the list of speech summaries from the AÇIKLAMALAR section (multiline safe)."""
+    # Handle OCR errors: açıklaması -> açıklamasıı, açıklaması, etc.
+    # Handle OCR errors: Bakanı -> Bakaın, Bakan, etc.
     pattern = re.compile(
-        r"(\d+)\.\-\s*(.*?)\s+Milletvekili\s+(.*?)’?(?:ın|in|un|ün|nın|nin),\s*(.*?)açıklaması\s+(\d+(?::\d+)?)",
+        r"(\d+)\.\-\s*(.*?)\s+Milletvekili\s+(.*?)'?(?:ın|in|un|ün|nın|nin),\s*(.*?)açıklaması+\s+(\d+(?::\d+)?)",
         re.UNICODE | re.IGNORECASE | re.DOTALL
     )
 
@@ -222,8 +225,9 @@ def extract_full_speech(text, speech_no, province, speaker):
     Find the full speech: locate the *second occurrence* of the summary
     and grab everything until the next summary or next section.
     """
+    # Handle OCR errors: açıklaması -> açıklamasıı, açıklaması, etc.
     start_pattern = re.compile(
-        rf"{speech_no}\.\-\s*{province}\s+Milletvekili\s+{re.escape(speaker)}.*?açıklaması",
+        rf"{speech_no}\.\-\s*{province}\s+Milletvekili\s+{re.escape(speaker)}.*?açıklaması+",
         re.UNICODE | re.DOTALL
     )
 
@@ -246,6 +250,78 @@ def extract_full_speech(text, speech_no, province, speaker):
 
     speech_block = text[start_idx:end_idx].strip()
     return speech_block if speech_block else None
+
+
+def extract_speeches_from_file(
+    filepath: str,
+    term: int,
+    year: int
+) -> List[Dict]:
+    """
+    Extract speeches from a single file (.txt) for terms 23-28.
+    
+    Args:
+        filepath: Path to the .txt file
+        term: Parliamentary term number
+        year: Year within the term
+        
+    Returns:
+        List of speech dictionaries with session_id, speech_no, province, speech_giver, 
+        speech_title, content, and enrichment data
+    """
+    filename = os.path.basename(filepath)
+    session_id = extract_session_id(filename, term, year)
+    
+    with open(filepath, "r", encoding="utf-8") as f:
+        raw_text = f.read()
+    
+    aciklamalar = extract_aciklamalar(raw_text)
+    summaries = extract_speech_summaries(aciklamalar)
+    
+    # Enrich speeches with MP info and session date
+    enriched_speeches = []
+    session_date = date_lookup.get(filename)
+    
+    for s in summaries:
+        speech_text = extract_full_speech(raw_text, s["speech_no"], s["province"], s["speech_giver"])
+        
+        # Enrich with MP Info (NEW FORMAT - using aggregated lookup)
+        political_party = []
+        terms_served = []
+        
+        if get_mp_party_list and get_terms_served:
+            political_party = get_mp_party_list(s["speech_giver"])
+            terms_served = get_terms_served(s["speech_giver"])
+        else:
+            mp_info = find_mp_info(s["speech_giver"])
+            if mp_info.get('party'):
+                political_party = [mp_info.get('party')]
+            terms_served = mp_info.get('terms', [])
+        
+        # Look up party at time of speech
+        political_party_at_time = None
+        if get_party_for_term:
+            political_party_at_time = get_party_for_term(s["speech_giver"], term)
+        
+        enriched_speeches.append({
+            "session_id": session_id,
+            "term": term,
+            "year": year,
+            "file": filename,
+            "speech_no": int(s["speech_no"]),
+            "province": s["province"],
+            "speech_giver": s["speech_giver"],
+            "political_party": political_party,
+            "political_party_at_time": political_party_at_time,
+            "terms_served": terms_served,
+            "speech_title": s["speech_title"],
+            "page_ref": s.get("page_ref"),
+            "content": speech_text if speech_text else "",
+            "session_date": session_date,
+            "_id": f"{session_id}-{s['speech_no']}"  # Add _id for ES indexing
+        })
+    
+    return enriched_speeches
 
 # ---------------- MAIN ---------------- #
 

@@ -3,7 +3,20 @@ import csv
 from pathlib import Path
 from typing import Dict, List, Optional
 
-from api.config import WIDID_RESULTS_DIR, get_calendar_year_range, get_term_year_display
+from api.config import WIDID_RESULTS_DIR
+
+
+def extract_calendar_year(session_date: str) -> Optional[int]:
+    """Extract calendar year from session_date string (DD.MM.YYYY format)."""
+    if not session_date:
+        return None
+    try:
+        parts = session_date.split('.')
+        if len(parts) >= 3:
+            return int(parts[2])  # Year is the third part
+    except (ValueError, IndexError):
+        pass
+    return None
 
 
 class TSNEService:
@@ -45,18 +58,33 @@ class TSNEService:
                 for row in reader:
                     term = int(row['term'])
                     year = int(row['year'])
-                    calendar_start, calendar_end = get_calendar_year_range(term, year)
+                    session_date = row.get('session_date', '')
+                    
+                    # Extract calendar year from session_date
+                    calendar_year = extract_calendar_year(session_date)
+                    
+                    # Set calendar_year_range and display_label based on extracted year
+                    if calendar_year:
+                        calendar_year_range = str(calendar_year)
+                        display_label = f"{calendar_year} (d{term}y{year})"
+                    else:
+                        # Fallback if session_date is missing or malformed
+                        calendar_year_range = ""
+                        display_label = f"d{term}y{year}"
                     
                     data_points.append({
                         'target_word': row['target_word'],
                         'term': term,
                         'year': year,
-                        'calendar_year_range': f"{calendar_start}-{calendar_end}",
-                        'display_label': get_term_year_display(term, year),
+                        'calendar_year': calendar_year,
+                        'calendar_year_range': calendar_year_range,
+                        'display_label': display_label,
                         'tsne_x': float(row['tsne_x']),
                         'tsne_y': float(row['tsne_y']),
                         'cluster_id': int(row['cluster_id']),
-                        'context': row['context']
+                        'context': row['context'],
+                        'session_date': session_date if session_date else None,
+                        'file': row.get('file')
                     })
         except Exception as e:
             print(f"Error reading CSV file {csv_path}: {e}")

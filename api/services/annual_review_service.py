@@ -5,7 +5,7 @@ Uses Elasticsearch for all aggregations including HDBSCAN topic summaries.
 import pandas as pd
 from pathlib import Path
 from typing import Dict, List, Optional
-from api.config import DATA_DIR, ELASTICSEARCH_INDEX
+from api.config import DATA_DIR, ELASTICSEARCH_INDEX, EXCLUDED_TOPIC_IDS
 from api.services.elasticsearch_service import es_service
 
 
@@ -86,6 +86,15 @@ class AnnualReviewService:
         try:
             client = es_service._get_client()
             
+            # Build must_not clause with excluded topics
+            must_not_clauses = [
+                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+            ]
+            # Add excluded topic IDs
+            for topic_id in EXCLUDED_TOPIC_IDS:
+                must_not_clauses.append({"term": {"hdbscan_topic_id": topic_id}})
+            
             # Aggregate topics by count for this term/year, using HDBSCAN topics
             response = client.search(
                 index=ELASTICSEARCH_INDEX,
@@ -98,17 +107,14 @@ class AnnualReviewService:
                                 {"term": {"year": year}},
                                 {"exists": {"field": "hdbscan_topic_id"}}
                             ],
-                            "must_not": [
-                                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
-                                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
-                            ]
+                            "must_not": must_not_clauses
                         }
                     },
                     "aggs": {
                         "topics": {
                             "terms": {
                                 "field": "hdbscan_topic_id",
-                                "size": 1,
+                                "size": 10,  # Get more results to filter excluded topics
                                 "order": {"_count": "desc"}
                             },
                             "aggs": {
@@ -128,7 +134,16 @@ class AnnualReviewService:
             if not buckets:
                 return {}
             
-            most_talked_bucket = buckets[0]
+            # Filter out excluded topics from buckets
+            # Handle both integer and string topic IDs from Elasticsearch
+            filtered_buckets = [
+                b for b in buckets 
+                if int(b['key']) not in EXCLUDED_TOPIC_IDS
+            ]
+            if not filtered_buckets:
+                return {}
+            
+            most_talked_bucket = filtered_buckets[0]
             speech_count = most_talked_bucket['doc_count']
             
             # Get topic label
@@ -303,6 +318,15 @@ class AnnualReviewService:
         try:
             client = es_service._get_client()
             
+            # Build must_not clause with excluded topics
+            must_not_clauses = [
+                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+            ]
+            # Add excluded topic IDs
+            for topic_id in EXCLUDED_TOPIC_IDS:
+                must_not_clauses.append({"term": {"hdbscan_topic_id": topic_id}})
+            
             # Aggregate topics by count for this term/year, using HDBSCAN topics
             response = client.search(
                 index=ELASTICSEARCH_INDEX,
@@ -315,10 +339,7 @@ class AnnualReviewService:
                                 {"term": {"year": year}},
                                 {"exists": {"field": "hdbscan_topic_id"}}
                             ],
-                            "must_not": [
-                                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
-                                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
-                            ]
+                            "must_not": must_not_clauses
                         }
                     },
                     "aggs": {
@@ -351,7 +372,16 @@ class AnnualReviewService:
             if not buckets:
                 return {}
             
-            niche_bucket = buckets[0]  # First bucket is the least discussed
+            # Filter out excluded topics from buckets
+            # Handle both integer and string topic IDs from Elasticsearch
+            filtered_buckets = [
+                b for b in buckets 
+                if int(b['key']) not in EXCLUDED_TOPIC_IDS
+            ]
+            if not filtered_buckets:
+                return {}
+            
+            niche_bucket = filtered_buckets[0]  # First bucket is the least discussed
             speech_count = niche_bucket['doc_count']
             
             # Get topic label
@@ -400,6 +430,15 @@ class AnnualReviewService:
         try:
             client = es_service._get_client()
             
+            # Build must_not clause with excluded topics
+            must_not_clauses = [
+                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
+                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
+            ]
+            # Add excluded topic IDs
+            for topic_id in EXCLUDED_TOPIC_IDS:
+                must_not_clauses.append({"term": {"hdbscan_topic_id": topic_id}})
+            
             # Aggregate topics by unique speaker count for this term/year
             response = client.search(
                 index=ELASTICSEARCH_INDEX,
@@ -412,10 +451,7 @@ class AnnualReviewService:
                                 {"term": {"year": year}},
                                 {"exists": {"field": "hdbscan_topic_id"}}
                             ],
-                            "must_not": [
-                                {"term": {"hdbscan_topic_id": -1}},  # Exclude outliers
-                                {"term": {"hdbscan_topic_id": 1}}    # Exclude extraction errors
-                            ]
+                            "must_not": must_not_clauses
                         }
                     },
                     "aggs": {
@@ -447,7 +483,16 @@ class AnnualReviewService:
             if not buckets:
                 return {}
             
-            most_diverse_bucket = buckets[0]  # First bucket has most unique speakers
+            # Filter out excluded topics from buckets
+            # Handle both integer and string topic IDs from Elasticsearch
+            filtered_buckets = [
+                b for b in buckets 
+                if int(b['key']) not in EXCLUDED_TOPIC_IDS
+            ]
+            if not filtered_buckets:
+                return {}
+            
+            most_diverse_bucket = filtered_buckets[0]  # First bucket has most unique speakers
             unique_speakers = most_diverse_bucket.get('unique_speakers', {}).get('value', 0)
             
             # Get topic label

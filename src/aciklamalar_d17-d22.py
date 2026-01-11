@@ -8,6 +8,7 @@ import csv
 import difflib
 import ast
 import sys
+from typing import List, Dict
 
 # Ensure we can import get_mp_details if running from a different directory
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
@@ -217,8 +218,19 @@ def extract_speech_summaries(raw_text):
     summaries = []
 
     # 1) Extract ONLY the A) GÜNDEM DIŞI KONUŞMALAR block
+    # Handle OCR errors: gündemdıışı, gündemdışı, etc.
+    # Handle format variations: "GÜNDEM DIŞI" (with space) or "GÜNDEMDİŞİ" (no space)
+    # Pattern allows for extra/missing characters in common OCR mistakes
     index_match = re.search(
-        r"A\)\s*GÜNDEM\s*DIŞI\s*KONUŞMALAR[^\n]*\n(.*?)(?=\n\s*(?:[B-Z]\)|[IVXL]+\.)|\Z)",
+        r"A\)\s*GÜNDEM\s*D[Iİıi]Ş[Iİıi]\s*KONUŞMALAR[^\n]*\n(.*?)(?=\n\s*(?:[B-Z]\)|[IVXL]+\.)|\Z)",
+        raw_text,
+        re.S | re.IGNORECASE
+    )
+    
+    # If first pattern didn't match, try the one-word version
+    if not index_match:
+        index_match = re.search(
+            r"A\)\s*GÜNDEMD[Iİıi]Ş[Iİıi]\s*KONUŞMALAR[^\n]*\n(.*?)(?=\n\s*(?:[B-Z]\)|[IVXL]+\.)|\Z)",
         raw_text,
         re.S | re.IGNORECASE
     )
@@ -232,12 +244,12 @@ def extract_speech_summaries(raw_text):
     # 2) Main item extraction pattern
     pattern = re.compile(
         r"""
-        (\d+)\.\s*[—-]\s*                              # 1. —
+        (\d+)\.\s*[-—]?\s*                              # 1. —
         ([A-Za-zÇĞİÖŞÜçğıöşüİıîéâûöü\s-]+?)\s+         # Province
-        (?:Milletvekili|Bakanı(?:\s+[A-Za-zÇĞİÖŞÜçğıöşüİıîéâûöü\s-]+?)*)\s+  
+        (?:Milletvekili|Bak[aanıiİI]+(?:\s+[A-Za-zÇĞİÖŞÜçğıöşüİıîéâûöü\s-]+?)*)\s+  
         ([A-Za-zÇĞİÖŞÜçğıöşüİıîéâûöü.\s-]+)\s*
         (?:['’]?(?:nın|nin|nun|nün|ın|in|un|ün))?,?\s*  
-        ([\s\S]*?)(?:konuşması|cevabı|(?=\d+\.\s*[—-])) 
+        ([\s\S]*?)(?:konuşması+|cevabı+|(?=\d+\.\s*[-—]?)) 
         """,
         re.IGNORECASE | re.VERBOSE
     )
@@ -309,10 +321,14 @@ def extract_full_speech(raw_text, speech_no, speaker_name):
     Diacritic-tolerant.
     """
 
-    # 1️⃣ Locate the second 'GÜNDEM DIŞI KONUŞMALAR'
+    # 1️⃣ Locate the second 'GÜNDEM DIŞI KONUŞMALAR' or 'GÜNDEMDİŞİ KONUŞMALAR'
+    # Handle OCR errors: gündemdıışı, gündemdışı, etc.
+    # Handle format variations: "GÜNDEM DIŞI" (with space) or "GÜNDEMDİŞİ" (no space)
     global FOUND_SUMMARY_BUT_NO_SPEECH
     raw_text = normalize_raw_text(raw_text)
-    matches = list(re.finditer(r"GÜNDEM\s+DIŞI\s+KONUŞMALAR", raw_text, re.I))
+    # More flexible pattern to handle OCR mistakes with extra/missing characters
+    # Try both formats: with space and without space
+    matches = list(re.finditer(r"GÜNDEM\s+D[Iİıi]Ş[Iİıi]\s+KONUŞMALAR|GÜNDEMD[Iİıi]Ş[Iİıi]\s+KONUŞMALAR", raw_text, re.I))
     if len(matches) < 2:
         return None
     transcript_part = raw_text[matches[1].end():]
@@ -324,7 +340,7 @@ def extract_full_speech(raw_text, speech_no, speaker_name):
     
     # 3️⃣ Locate the speech start (include the name line)
     start_match = re.search(
-        rf"{flexible_name}[A-ZÇĞİÖŞÜÂÎÛ'\s.-]*\s*\(.*?\)\s*[—-]", 
+        rf"{flexible_name}[A-ZÇĞİÖŞÜÂÎÛ'\s.-]*\s*\(.*?\)\s*[-—]?", 
         transcript_part, 
         re.S | re.I
     )
@@ -336,9 +352,10 @@ def extract_full_speech(raw_text, speech_no, speaker_name):
     start_index = start_match.start()
 
     # 4️⃣ Locate the end (next numbered speech or BAŞKAN)
+    # Handle format variations: "1. —", "1.-", or "1."
     next_num = int(speech_no) + 1
     end_match = re.search(
-        rf"(?={next_num}\.\s*[—-]|BAŞKAN\s*[—-])", 
+        rf"(?={next_num}\.\s*[-—]?|BAŞKAN\s*[-—]?)", 
         transcript_part[start_index:], 
         re.S | re.I
     )
@@ -374,6 +391,82 @@ def extract_full_speeches(raw_text, summaries):
             })
 
     return full_speeches
+
+
+def extract_speeches_from_file(
+    filepath: str,
+    term: int,
+    year: int,
+    parent_folder: str = None
+) -> List[Dict]:
+    """
+    Extract speeches from a single file (result.mmd) for terms 17-22.
+    
+    Args:
+        filepath: Path to the result.mmd file
+        term: Parliamentary term number
+        year: Year within the term
+        parent_folder: Parent folder name (e.g., tbmm17001001). If None, extracted from filepath.
+        
+    Returns:
+        List of speech dictionaries with session_id, speech_no, province, speech_giver, 
+        speech_title, content, and enrichment data
+    """
+    if parent_folder is None:
+        parent_folder = os.path.basename(os.path.dirname(filepath))
+    
+    filename = os.path.basename(filepath)
+    session_id = extract_session_id(parent_folder, term, year)
+    
+    with open(filepath, "r", encoding="utf-8") as f:
+        raw_text = normalize_raw_text(f.read())
+    
+    summaries = extract_speech_summaries(raw_text)
+    full_speeches = extract_full_speeches(raw_text, summaries)
+    
+    # Enrich speeches with MP info and session date
+    enriched_speeches = []
+    txt_filename = f"{parent_folder}.txt"
+    session_date = date_lookup.get(txt_filename)
+    
+    for s in full_speeches:
+        # Enrich with MP Info (NEW FORMAT - using aggregated lookup)
+        political_party = []
+        terms_served = []
+        
+        if get_mp_party_list and get_terms_served:
+            political_party = get_mp_party_list(s["speech_giver"])
+            terms_served = get_terms_served(s["speech_giver"])
+        else:
+            mp_info = find_mp_info(s["speech_giver"])
+            if mp_info.get('party'):
+                political_party = [mp_info.get('party')]
+            terms_served = mp_info.get('terms', [])
+        
+        # Look up party at time of speech
+        political_party_at_time = None
+        if get_party_for_term:
+            political_party_at_time = get_party_for_term(s["speech_giver"], term)
+        
+        enriched_speeches.append({
+            "session_id": session_id,
+            "term": term,
+            "year": year,
+            "file": filename,
+            "speech_no": int(s["speech_no"]),
+            "province": s["province"],
+            "speech_giver": s["speech_giver"],
+            "political_party": political_party,
+            "political_party_at_time": political_party_at_time,
+            "terms_served": terms_served,
+            "speech_title": s["speech_title"],
+            "page_ref": s.get("page_ref"),
+            "content": s["content"],
+            "session_date": session_date,
+            "_id": f"{session_id}-{s['speech_no']}"  # Add _id for ES indexing
+        })
+    
+    return enriched_speeches
 
 
 if __name__ == "__main__":

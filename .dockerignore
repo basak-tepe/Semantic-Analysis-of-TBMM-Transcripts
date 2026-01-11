@@ -32,16 +32,7 @@ docs/
 scripts/
 
 # Specific large files to exclude from data/
-data/speeches_clean.csv
-data/speeches_clean copy.csv
-data/speech_keywords.csv
-data/mp_deduplication_log.csv
-data/mp_lookup.csv
-data/mps_by_term.csv
-data/mps_by_term_cleaned.csv
-data/keyword_embeddings.npy
-data/topic_summary_backup.csv
-
+data/data_secret/*
 # Specific source files to exclude from src/
 src/aciklamalar_d17-d22.py
 src/aciklamalar_d25-d28.py

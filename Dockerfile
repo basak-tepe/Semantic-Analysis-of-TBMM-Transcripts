@@ -23,12 +23,12 @@ COPY api/ /app/api/
 
 # Copy required data files EXPLICITLY
 COPY data/mps_aggregated_by_term.csv /app/data/
-COPY data/topic_summary.csv /app/data/
+#COPY data/topic_summary.csv /app/data/
 
 # Copy required src files EXPLICITLY
 COPY src/mp_aggregated_lookup.py /app/src/
-COPY src/mp_name_normalizer.py /app/src/
-COPY src/mp_party_lookup.py /app/src/
+#COPY src/mp_name_normalizer.py /app/src/
+#COPY src/mp_party_lookup.py /app/src/
 COPY src/widid_results/ /app/src/widid_results/
 
 # Expose port (Cloud Run will set $PORT)

@@ -16,6 +16,10 @@ docker.elastic.co/elasticsearch/elasticsearch:8.6.1
 
 
 
+# Create volume for data persistence (run once)
+docker volume create es-data
+
+# Run Elasticsearch container with volume mounted
 docker run -d \
   --name es-node01 \
   -p 9200:9200 \
@@ -25,6 +29,7 @@ docker run -d \
   -e "http.cors.allow-origin=http://localhost:3000" \
   -e "http.cors.allow-methods=GET,POST,PUT,DELETE,OPTIONS" \
   -e "http.cors.allow-headers=Content-Type" \
+  -v es-data:/usr/share/elasticsearch/data \
   docker.elastic.co/elasticsearch/elasticsearch:8.6.1
 
 

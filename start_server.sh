@@ -2,6 +2,6 @@
 # Start the FastAPI server using the virtual environment's Python
 
 cd "$(dirname "$0")"
-source venv/bin/activate
-python -m uvicorn api.main:app --reload --port 8000
+source myenv/bin/activate
+python3.11 -m uvicorn api.main:app --reload --port 8000
 

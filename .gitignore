@@ -7,7 +7,6 @@ bertopic_model
 topic_summary.csv
 speeches_clean.csv
 venv/
-data/
 widid_results/
 PDFs
 TXTS_deepseek

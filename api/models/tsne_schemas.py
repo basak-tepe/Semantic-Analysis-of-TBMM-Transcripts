@@ -13,6 +13,9 @@ class TSNEDataPoint(BaseModel):
     target_word: str
     term: int
     year: int
+    calendar_year: Optional[int] = None  # Extracted from session_date (e.g., 2018)
+    calendar_year_range: str  # Format: "2018" (single year from session_date)
+    display_label: str  # Format: "2018 (d26y3)" (calendar year with term-year info)
     tsne_x: float
     tsne_y: float
     cluster_id: int
